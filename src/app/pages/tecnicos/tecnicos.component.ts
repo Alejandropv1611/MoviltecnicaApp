@@ -259,8 +259,13 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
 
             <!-- TAB 2: BASE REQUIREMENTS -->
             <div *ngIf="modalTab === 'base'">
-              <div style="margin-bottom: 12px; font-size: 12px; color: var(--txt-m);">
-                Edita la fecha de vencimiento y el estado de habilitación para los requisitos base de Movitécnica.
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 12px; color: var(--txt-m);">
+                  Edita la fecha de vencimiento y el estado de habilitación para los requisitos base de Movitécnica.
+                </div>
+                <button class="m-btn m-btn-sm" style="background: var(--surf); border-color: var(--border);" (click)="addBaseReq()">
+                  + Añadir Requisito
+                </button>
               </div>
               <table class="m-table" style="width: 100%;">
                 <thead>
@@ -269,11 +274,14 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
                     <th class="m-th" style="width: 190px;">Fecha Vence</th>
                     <th class="m-th" style="width: 140px;">Estado</th>
                     <th class="m-th" style="width: 110px; text-align: center;">Indicador</th>
+                    <th class="m-th" style="width: 40px;"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let r of form.baseReqs" class="m-tr">
-                    <td class="m-td" style="font-weight: 600;">{{ r.nombre }}</td>
+                  <tr *ngFor="let r of form.baseReqs; let i = index" class="m-tr">
+                    <td class="m-td" style="font-weight: 600;">
+                      <input class="m-input" style="padding: 4px 8px; font-size: 11px; width: 100%; border: none; background: transparent; font-weight: 600;" [(ngModel)]="r.nombre" placeholder="Nombre requisito" />
+                    </td>
                     <td class="m-td">
                       <input type="date" class="m-input" style="padding: 4px 8px; font-size: 11px;" [(ngModel)]="r.vence"/>
                     </td>
@@ -290,9 +298,15 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
                         {{ getReqStatusStyle(r.estado).lb }}
                       </span>
                     </td>
+                    <td class="m-td" style="text-align: center;">
+                      <button class="m-btn m-btn-sm m-btn-dan" style="padding: 2px 6px; font-size: 10px;" (click)="removeBaseReq(i)">✕</button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
+              <div *ngIf="form.baseReqs?.length === 0" style="text-align: center; padding: 20px; color: var(--txt-m); font-size: 12px; border: 1px dashed var(--border); border-radius: 8px;">
+                No hay requisitos base asignados a este técnico. Haz clic en "+ Añadir Requisito" para agregar uno.
+              </div>
             </div>
 
             <!-- TAB 3: CLIENT REQUIREMENTS -->
@@ -546,9 +560,9 @@ export class TecnicosComponent {
       email: this.form.email || '',
       arl: this.form.arl || 'Positiva',
       eps: this.form.eps || 'Sura',
-      obs: this.form.obs || ''
-      // NOTA: baseReqs y clientes no se guardan en esta versión
-      // para evitar problemas de caché de Supabase con columnas JSONB
+      obs: this.form.obs || '',
+      baseReqs: this.form.baseReqs || [],
+      clientes: this.form.clientes || []
     };
 
     console.log('[TecnicosComponent] Saving technician:', itemToSave);
@@ -599,6 +613,17 @@ export class TecnicosComponent {
   removeClientFromForm(index: number) {
     if (this.form.clientes) {
       this.form.clientes.splice(index, 1);
+    }
+  }
+
+  addBaseReq() {
+    if (!this.form.baseReqs) this.form.baseReqs = [];
+    this.form.baseReqs.push({ nombre: '', vence: '', estado: 'pendiente' });
+  }
+
+  removeBaseReq(index: number) {
+    if (this.form.baseReqs) {
+      this.form.baseReqs.splice(index, 1);
     }
   }
 

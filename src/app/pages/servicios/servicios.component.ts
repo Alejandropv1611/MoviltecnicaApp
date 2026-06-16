@@ -47,6 +47,7 @@ import { DbService, Servicio } from '../../services/db.service';
             <thead>
               <tr>
                 <th class="m-th">OV</th>
+                <th class="m-th">F. Creación</th>
                 <th class="m-th">Cliente</th>
                 <th class="m-th">OC</th>
                 <th class="m-th">Descripción</th>
@@ -67,6 +68,7 @@ import { DbService, Servicio } from '../../services/db.service';
             <tbody>
               <tr *ngFor="let x of rows()" class="m-tr">
                 <td class="m-td"><strong style="color: var(--blue);">{{ x.id }}</strong></td>
+                <td class="m-td" style="font-size: 11px; color: var(--txt-m);">{{ x.creado }}</td>
                 <td class="m-td">{{ x.cliente }}</td>
                 <td class="m-td" style="font-size: 11px; color: var(--txt-m);">{{ x.oc || '—' }}</td>
                 <td class="m-td" style="max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="x.desc">

@@ -1,5 +1,6 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DbService } from '../../services/db.service';
 import { AuthService } from '../../services/auth.service';
 import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSingleComponent } from '../../components/svg-charts';
@@ -9,6 +10,7 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     CircularRingComponent,
     SvgPieComponent,
     SvgBarGroupComponent,
@@ -26,6 +28,15 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           Salir del sistema
         </button>
+      </div>
+
+      <!-- Filters Row -->
+      <div style="display: flex; gap: 14px; margin-bottom: 20px; align-items: center; background: #FFF; padding: 12px 18px; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.09);">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <label style="font-size: 13px; font-weight: 700; color: #4B5563;">Periodo:</label>
+          <input type="month" class="m-input" [ngModel]="fDate()" (ngModelChange)="fDate.set($event)" style="width: 160px; padding: 6px 12px;"/>
+        </div>
+        <button class="m-btn m-btn-sm" style="background: var(--surf); border-color: var(--border);" *ngIf="fDate()" (click)="fDate.set('')">✕ Ver Histórico Global</button>
       </div>
 
       <!-- Metric Cards Grid -->
@@ -167,7 +178,17 @@ export class DashboardComponent {
   private dbService = inject(DbService);
   public authService = inject(AuthService);
 
-  svcs = computed(() => this.dbService.servicios());
+  fDate = signal('');
+
+  svcs = computed(() => {
+    const d = this.fDate();
+    let list = this.dbService.servicios();
+    if (d) {
+      list = list.filter(x => x.creado && x.creado.startsWith(d));
+    }
+    return list;
+  });
+  
   tecs = computed(() => this.dbService.tecnicos());
 
   tv = computed(() => this.svcs().reduce((s, x) => s + (x.valor || 0), 0));

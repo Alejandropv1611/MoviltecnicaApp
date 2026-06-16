@@ -12,6 +12,12 @@ export interface ClientRequirement {
   reqs: BaseRequirement[];
 }
 
+export interface Cliente {
+  id: string;
+  nombre: string;
+  reqs: BaseRequirement[];
+}
+
 export interface Tecnico {
   id: string;
   nombre: string;
@@ -216,6 +222,7 @@ export class DbService {
   public viaticos = signal<Viatico[]>([]);
   public insumos = signal<Insumo[]>([]);
   public repuestos = signal<Repuesto[]>([]);
+  public clientes = signal<Cliente[]>([]);
 
   constructor() {
     this.init();
@@ -224,13 +231,14 @@ export class DbService {
   private async init() {
     console.log("[DbService] Initializing - Fetching from Supabase...");
     try {
-      const [sRes, tRes, eRes, vRes, iRes, rRes] = await Promise.all([
+      const [sRes, tRes, eRes, vRes, iRes, rRes, cRes] = await Promise.all([
         this.supabase.from('servicios').select('*'),
         this.supabase.from('tecnicos').select('*'),
         this.supabase.from('solic_epp').select('*'),
         this.supabase.from('viaticos').select('*'),
         this.supabase.from('insumos').select('*'),
         this.supabase.from('repuestos').select('*'),
+        this.supabase.from('clientes').select('*'),
       ]);
 
       console.log("[DbService] Fetch results:", {
@@ -240,6 +248,7 @@ export class DbService {
         viaticos: vRes.data?.length || 0,
         insumos: iRes.data?.length || 0,
         repuestos: rRes.data?.length || 0,
+        clientes: cRes.data?.length || 0,
         servicios_error: sRes.error?.message,
         tecnicos_error: tRes.error?.message,
       });
@@ -280,6 +289,14 @@ export class DbService {
       if (vRes.data) this.viaticos.set(vRes.data as Viatico[]);
       if (iRes.data) this.insumos.set(iRes.data as Insumo[]);
       if (rRes.data) this.repuestos.set(rRes.data as Repuesto[]);
+      
+      if (cRes.data) {
+        const parsedClientes = cRes.data.map((c: any) => ({
+          ...c,
+          reqs: this.parseJsonField(c.reqs, []),
+        }));
+        this.clientes.set(parsedClientes as Cliente[]);
+      }
       
       console.log("[DbService] Initialization complete. Signals set.");
     } catch (err) {
@@ -333,6 +350,7 @@ export class DbService {
       case 'viaticos': this.viaticos.set(data); break;
       case 'insumos': this.insumos.set(data); break;
       case 'repuestos': this.repuestos.set(data); break;
+      case 'clientes': this.clientes.set(data); break;
     }
   }
 
@@ -344,6 +362,7 @@ export class DbService {
       case 'viaticos': return this.viaticos();
       case 'insumos': return this.insumos();
       case 'repuestos': return this.repuestos();
+      case 'clientes': return this.clientes();
       default: return [];
     }
   }
@@ -375,6 +394,13 @@ export class DbService {
       }
     }
     
+    if (sbTable === 'clientes') {
+      if (dataToSave.reqs && typeof dataToSave.reqs === 'object') {
+        dataToSave.reqs = JSON.stringify(dataToSave.reqs);
+        console.log(`[DbService] Serialized reqs as JSON string`);
+      }
+    }
+    
     console.log(`[DbService] Data to save (after serialization):`, JSON.stringify(dataToSave));
     
     // Save to cloud first
@@ -401,6 +427,9 @@ export class DbService {
     }
     if (colName === 'solicEpp') {
       signalItem.items = this.parseJsonField(item.items, []);
+    }
+    if (colName === 'clientes') {
+      signalItem.reqs = this.parseJsonField(item.reqs, []);
     }
     if (exIdx >= 0) {
       updatedList = list.map((x, i) => i === exIdx ? { ...x, ...signalItem } : x);
@@ -429,11 +458,12 @@ export class DbService {
 
   // Helper values
   public getClientesList(): string[] {
-    return Object.keys(REQ_CLIENTE_DEFAULT);
+    return this.clientes().map(c => c.nombre).sort();
   }
 
   public getClienteDefaultReqs(cliente: string): BaseRequirement[] {
-    return (REQ_CLIENTE_DEFAULT[cliente] || []).map((r: any) => ({ ...r }));
+    const c = this.clientes().find(x => x.nombre === cliente);
+    return c ? c.reqs.map(r => ({ ...r })) : [];
   }
 
   public getBaseDefaultReqs(): BaseRequirement[] {

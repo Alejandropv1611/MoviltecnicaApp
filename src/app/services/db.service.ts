@@ -222,41 +222,107 @@ export class DbService {
   }
 
   private async init() {
-    console.log("Fetching from Supabase...");
-    const [sRes, tRes, eRes, vRes, iRes, rRes] = await Promise.all([
-      this.supabase.from('servicios').select('*'),
-      this.supabase.from('tecnicos').select('*'),
-      this.supabase.from('solic_epp').select('*'),
-      this.supabase.from('viaticos').select('*'),
-      this.supabase.from('insumos').select('*'),
-      this.supabase.from('repuestos').select('*'),
-    ]);
+    console.log("[DbService] Initializing - Fetching from Supabase...");
+    try {
+      const [sRes, tRes, eRes, vRes, iRes, rRes] = await Promise.all([
+        this.supabase.from('servicios').select('*'),
+        this.supabase.from('tecnicos').select('*'),
+        this.supabase.from('solic_epp').select('*'),
+        this.supabase.from('viaticos').select('*'),
+        this.supabase.from('insumos').select('*'),
+        this.supabase.from('repuestos').select('*'),
+      ]);
 
-    // Auto-seed if database is completely empty
-    if (sRes.data && sRes.data.length === 0 && tRes.data && tRes.data.length === 0) {
-      await this.seedDatabase();
-      return; // Will call init() again
+      console.log("[DbService] Fetch results:", {
+        servicios: sRes.data?.length || 0,
+        tecnicos: tRes.data?.length || 0,
+        solicEpp: eRes.data?.length || 0,
+        viaticos: vRes.data?.length || 0,
+        insumos: iRes.data?.length || 0,
+        repuestos: rRes.data?.length || 0,
+        servicios_error: sRes.error?.message,
+        tecnicos_error: tRes.error?.message,
+      });
+
+      // Check for RLS issues
+      if (tRes.error?.message?.includes('RLS')) {
+        console.error("[DbService] RLS Policy Issue Detected on tecnicos table!");
+        console.error("[DbService] You may need to disable RLS or create public policies in Supabase");
+      }
+
+      // Auto-seed if database is completely empty
+      if (sRes.data && sRes.data.length === 0 && tRes.data && tRes.data.length === 0) {
+        console.log("[DbService] Database is empty. Starting auto-seed...");
+        await this.seedDatabase();
+        return; // Will call init() again
+      }
+
+      if (sRes.data) this.servicios.set(sRes.data as Servicio[]);
+
+      // Parse JSONB fields that Supabase may return as strings
+      if (tRes.data) {
+        const parsedTecs = tRes.data.map((t: any) => ({
+          ...t,
+          baseReqs: this.parseJsonField(t.baseReqs, []),
+          clientes:  this.parseJsonField(t.clientes,  []),
+        }));
+        this.tecnicos.set(parsedTecs as Tecnico[]);
+      }
+
+      if (eRes.data) {
+        const parsedEpp = eRes.data.map((e: any) => ({
+          ...e,
+          items: this.parseJsonField(e.items, []),
+        }));
+        this.solicEpp.set(parsedEpp as SolicEpp[]);
+      }
+
+      if (vRes.data) this.viaticos.set(vRes.data as Viatico[]);
+      if (iRes.data) this.insumos.set(iRes.data as Insumo[]);
+      if (rRes.data) this.repuestos.set(rRes.data as Repuesto[]);
+      
+      console.log("[DbService] Initialization complete. Signals set.");
+    } catch (err) {
+      console.error("[DbService] Unexpected error during init:", err);
     }
+  }
 
-    if (sRes.data) this.servicios.set(sRes.data as Servicio[]);
-    if (tRes.data) this.tecnicos.set(tRes.data as Tecnico[]);
-    if (eRes.data) this.solicEpp.set(eRes.data as SolicEpp[]);
-    if (vRes.data) this.viaticos.set(vRes.data as Viatico[]);
-    if (iRes.data) this.insumos.set(iRes.data as Insumo[]);
-    if (rRes.data) this.repuestos.set(rRes.data as Repuesto[]);
+  /** Safely parse a value that might be a JSON string or already an object/array */
+  private parseJsonField<T>(value: any, fallback: T): T {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'string') {
+      try { return JSON.parse(value) as T; } catch { return fallback; }
+    }
+    if (Array.isArray(value) || typeof value === 'object') return value as T;
+    return fallback;
   }
 
   private async seedDatabase() {
-    console.log("Seeding Supabase with initial data...");
-    await Promise.all([
-      this.supabase.from('servicios').insert(SEED.servicios),
-      this.supabase.from('tecnicos').insert(SEED.tecnicos),
-      this.supabase.from('solic_epp').insert(SEED.solicEpp),
-      this.supabase.from('viaticos').insert(SEED.viaticos),
-      this.supabase.from('insumos').insert(SEED.insumos),
-      this.supabase.from('repuestos').insert(SEED.repuestos),
-    ]);
-    await this.init();
+    console.log("[DbService] Starting auto-seed with initial data...");
+    try {
+      const results = await Promise.all([
+        this.supabase.from('servicios').insert(SEED.servicios),
+        this.supabase.from('tecnicos').insert(SEED.tecnicos),
+        this.supabase.from('solic_epp').insert(SEED.solicEpp),
+        this.supabase.from('viaticos').insert(SEED.viaticos),
+        this.supabase.from('insumos').insert(SEED.insumos),
+        this.supabase.from('repuestos').insert(SEED.repuestos),
+      ]);
+      
+      results.forEach((res, idx) => {
+        const tables = ['servicios', 'tecnicos', 'solic_epp', 'viaticos', 'insumos', 'repuestos'];
+        if (res.error) {
+          console.error(`[DbService] Seed error for ${tables[idx]}:`, res.error);
+        } else {
+          console.log(`[DbService] Successfully seeded ${tables[idx]}`);
+        }
+      });
+      
+      console.log("[DbService] Seed complete. Re-initializing...");
+      await this.init();
+    } catch (err) {
+      console.error("[DbService] Unexpected error during seeding:", err);
+    }
   }
 
   private setSignal(key: string, data: any[]) {
@@ -285,23 +351,66 @@ export class DbService {
   public async upsert(colName: string, item: any) {
     const sbTable = colName === 'solicEpp' ? 'solic_epp' : colName;
     
-    // Save to cloud first
-    const { error } = await this.supabase.from(sbTable).upsert(item);
-    if (error) {
-      console.error('Error upserting to', sbTable, error);
-      return; // Could show toast error here
+    console.log(`[DbService] Upserting to ${sbTable}:`, item);
+    
+    // Para tablas con columnas JSONB, serializar correctamente
+    let dataToSave = { ...item };
+    
+    if (sbTable === 'tecnicos') {
+      // Serializar columnas JSONB como strings
+      if (dataToSave.baseReqs && typeof dataToSave.baseReqs === 'object') {
+        dataToSave.baseReqs = JSON.stringify(dataToSave.baseReqs);
+        console.log(`[DbService] Serialized baseReqs as JSON string`);
+      }
+      if (dataToSave.clientes && typeof dataToSave.clientes === 'object') {
+        dataToSave.clientes = JSON.stringify(dataToSave.clientes);
+        console.log(`[DbService] Serialized clientes as JSON string`);
+      }
     }
     
-    // Optimistic UI update
+    if (sbTable === 'solic_epp') {
+      if (dataToSave.items && typeof dataToSave.items === 'object') {
+        dataToSave.items = JSON.stringify(dataToSave.items);
+        console.log(`[DbService] Serialized items as JSON string`);
+      }
+    }
+    
+    console.log(`[DbService] Data to save (after serialization):`, JSON.stringify(dataToSave));
+    
+    // Save to cloud first
+    const { data, error } = await this.supabase.from(sbTable).upsert(dataToSave);
+    if (error) {
+      console.error(`[DbService] Error upserting to ${sbTable}:`, error);
+      console.error(`[DbService] Error code:`, error.code);
+      console.error(`[DbService] Error message:`, error.message);
+      console.error(`[DbService] Full error object:`, JSON.stringify(error));
+      return false;
+    }
+    
+    console.log(`[DbService] Successfully upserted to ${sbTable}:`, data);
+    
+    // Optimistic UI update — use original item (not serialized) for signal
     const list = this.getCollection(colName);
     const exIdx = list.findIndex(x => x.id === item.id);
     let updatedList: any[];
+    // For tecnicos, ensure JSONB fields are objects in the signal (not strings)
+    let signalItem = { ...item };
+    if (colName === 'tecnicos') {
+      signalItem.baseReqs = this.parseJsonField(item.baseReqs, []);
+      signalItem.clientes  = this.parseJsonField(item.clientes,  []);
+    }
+    if (colName === 'solicEpp') {
+      signalItem.items = this.parseJsonField(item.items, []);
+    }
     if (exIdx >= 0) {
-      updatedList = list.map((x, i) => i === exIdx ? { ...x, ...item } : x);
+      updatedList = list.map((x, i) => i === exIdx ? { ...x, ...signalItem } : x);
+      console.log(`[DbService] Updated existing item at index ${exIdx}`);
     } else {
-      updatedList = [...list, item];
+      updatedList = [...list, signalItem];
+      console.log(`[DbService] Added new item. New list length: ${updatedList.length}`);
     }
     this.setSignal(colName, updatedList);
+    return true;
   }
 
   public async remove(colName: string, id: string) {

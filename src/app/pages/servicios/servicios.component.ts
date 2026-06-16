@@ -356,7 +356,7 @@ export class ServiciosComponent {
     return !!(this.form.id && this.form.cliente && this.form.desc);
   }
 
-  save() {
+  async save() {
     if (!this.isFormValid()) return;
     
     const finalItem: Servicio = {
@@ -383,7 +383,7 @@ export class ServiciosComponent {
       creado: this.form.creado || new Date().toISOString().slice(0, 10)
     };
 
-    this.dbService.upsert('servicios', finalItem);
+    await this.dbService.upsert('servicios', finalItem);
     this.closeModal();
   }
 

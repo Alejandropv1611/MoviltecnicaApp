@@ -629,7 +629,7 @@ export class RecursosComponent {
     return !!(this.eppForm.ov && this.eppForm.tecnico && hasItems);
   }
 
-  saveEpp() {
+  async saveEpp() {
     if (!this.isEppFormValid()) return;
     const validItems = this.eppItems.filter(i => i.desc?.trim()).map(i => ({
       desc: i.desc,
@@ -647,7 +647,7 @@ export class RecursosComponent {
       items: validItems
     };
 
-    this.dbService.upsert('solicEpp', finalEpp);
+    await this.dbService.upsert('solicEpp', finalEpp);
     this.eppModal = null;
   }
 
@@ -668,7 +668,7 @@ export class RecursosComponent {
     return false;
   }
 
-  saveGeneric() {
+  async saveGeneric() {
     if (!this.isGenericFormValid()) return;
     const tab = this.activeTab();
     
@@ -681,7 +681,7 @@ export class RecursosComponent {
       this.genericForm.cu = Number(this.genericForm.cu) || 0;
     }
 
-    this.dbService.upsert(tab as any, { ...this.genericForm });
+    await this.dbService.upsert(tab as any, { ...this.genericForm });
     this.genericModal = null;
   }
 

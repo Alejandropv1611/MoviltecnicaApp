@@ -530,10 +530,11 @@ export class TecnicosComponent {
     return !!(this.form.id && this.form.nombre && this.form.doc);
   }
 
-  save() {
+  async save() {
     if (!this.isFormValid()) return;
     
-    const finalItem: Tecnico = {
+    // Crear objeto sin las columnas JSONB problemáticas
+    const itemToSave = {
       id: this.form.id!,
       nombre: this.form.nombre!,
       doc: this.form.doc!,
@@ -545,13 +546,20 @@ export class TecnicosComponent {
       email: this.form.email || '',
       arl: this.form.arl || 'Positiva',
       eps: this.form.eps || 'Sura',
-      obs: this.form.obs || '',
-      baseReqs: this.form.baseReqs || this.dbService.getBaseDefaultReqs(),
-      clientes: this.form.clientes || []
+      obs: this.form.obs || ''
+      // NOTA: baseReqs y clientes no se guardan en esta versión
+      // para evitar problemas de caché de Supabase con columnas JSONB
     };
 
-    this.dbService.upsert('tecnicos', finalItem);
-    this.modal = null;
+    console.log('[TecnicosComponent] Saving technician:', itemToSave);
+    const success = await this.dbService.upsert('tecnicos', itemToSave);
+    if (success) {
+      console.log('[TecnicosComponent] Technician saved successfully!');
+      this.modal = null;
+    } else {
+      console.error('[TecnicosComponent] Failed to save technician. Check console for details.');
+      alert('Error al guardar técnico. Revisa la consola del navegador para más detalles.');
+    }
   }
 
   confirmDelete(id: string) {

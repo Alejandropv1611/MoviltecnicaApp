@@ -347,7 +347,7 @@ export class SvgBarGroupComponent implements OnChanges {
   imports: [CommonModule],
   template: `
     <div class="bar-chart-wrapper" style="position: relative; width: 100%;">
-      <svg width="100%" height="170" viewBox="0 0 500 170" style="overflow: visible;">
+      <svg width="100%" height="170" viewBox="0 0 500 170" style="overflow: hidden;">
         <!-- Grid lines -->
         <g stroke="#E8E8E8" stroke-width="0.5">
           <line *ngFor="let grid of gridLines" x1="40" [attr.y1]="grid.y" x2="480" [attr.y2]="grid.y" />
@@ -370,7 +370,7 @@ export class SvgBarGroupComponent implements OnChanges {
         <g *ngFor="let bar of bars; let idx = index">
           <rect [attr.x]="bar.x" 
                 [attr.y]="bar.y" 
-                [attr.width]="barWidth" 
+                [attr.width]="adaptiveBarWidth" 
                 [attr.height]="bar.height" 
                 [attr.fill]="bar.color" 
                 rx="4" 
@@ -405,6 +405,7 @@ export class SvgBarSingleComponent implements OnChanges {
   tooltipVisible = false;
   tooltipX = 0;
   tooltipY = 0;
+  adaptiveBarWidth = 18;
 
   ngOnChanges() {
     this.calculateChart();
@@ -431,6 +432,14 @@ export class SvgBarSingleComponent implements OnChanges {
     const leftMargin = 40;
     const n = this.data.length;
 
+    // Dynamically adjust bar width based on number of data points
+    this.adaptiveBarWidth = this.barWidth;
+    if (n > 10) {
+      this.adaptiveBarWidth = Math.max(8, Math.floor(chartWidth / (n * 1.5)));
+    } else if (n > 6) {
+      this.adaptiveBarWidth = Math.max(10, Math.floor(chartWidth / (n * 1.3)));
+    }
+
     // Grid lines and labels
     this.gridLines = [];
     this.yLabels = [];
@@ -447,7 +456,7 @@ export class SvgBarSingleComponent implements OnChanges {
     const step = chartWidth / n;
     this.bars = this.data.map((item, idx) => {
       const cx = leftMargin + step * (idx + 0.5);
-      const x = cx - this.barWidth / 2;
+      const x = cx - this.adaptiveBarWidth / 2;
       
       // Percentage scaling within domain
       const scalePercent = (item.value - minVal) / (maxVal - minVal);

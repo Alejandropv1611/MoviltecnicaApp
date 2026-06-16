@@ -55,8 +55,8 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
 
         <div class="m-card" style="padding: 13px 15px;">
           <div style="font-size:11px; font-weight:600; color:var(--txt-m); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">UB promedio</div>
-          <div style="font-size:22px; font-weight:700; line-height:1;" [style.color]="ubP() >= 95 ? 'var(--green)' : 'var(--amber)'">{{ ubP() }}%</div>
-          <div style="font-size:11px; color:var(--txt-m); margin-top:4px;">Meta: &ge;95%</div>
+          <div style="font-size:22px; font-weight:700; line-height:1;" [style.color]="ubP() >= 36 ? 'var(--green)' : 'var(--amber)'">{{ ubP() }}%</div>
+          <div style="font-size:11px; color:var(--txt-m); margin-top:4px;">Meta: &ge;36%</div>
         </div>
 
         <div class="m-card" style="padding: 13px 15px;">
@@ -84,7 +84,7 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
           <div style="font-size: 13px; font-weight: 700; margin-bottom: 12px;">KPIs operacionales</div>
           <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 8px;">
             <app-circular-ring [val]="pTime()" label="Tiempo ≤30d" [meta]="95"></app-circular-ring>
-            <app-circular-ring [val]="ubP()" label="UB ≥95%" [meta]="95"></app-circular-ring>
+            <app-circular-ring [val]="ubP()" label="UB ≥36%" [meta]="36"></app-circular-ring>
             <app-circular-ring [val]="pHH()" label="H.H ≥95%" [meta]="95"></app-circular-ring>
           </div>
         </div>
@@ -139,12 +139,12 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
       <!-- UB Real Chart -->
       <div *ngIf="ubD().length > 0" class="m-card" style="margin-bottom: 14px;">
         <div style="font-size: 13px; font-weight: 700; margin-bottom: 3px;">
-          UB Real por servicio <span style="font-weight: 400; color: var(--txt-m); font-size: 12px;">— Meta &gt;95%</span>
+          UB Real por servicio <span style="font-weight: 400; color: var(--txt-m); font-size: 12px;">— Meta &ge;36%</span>
         </div>
-        <app-svg-bar-single [data]="ubD()" unit="%" [domain]="[85, 100]" [customColorScale]="true" [barWidth]="22"></app-svg-bar-single>
+        <app-svg-bar-single [data]="ubD()" unit="%" [domain]="[0, 100]" [customColorScale]="true" [barWidth]="22"></app-svg-bar-single>
         <div style="display: flex; gap: 12px; justify-content: center; font-size: 11px; color: var(--txt-m); margin-top: 8px;">
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #8BC34A; display: inline-block; border-radius: 2px;"></span> Cumple (&ge;95%)</span>
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #C0392B; display: inline-block; border-radius: 2px;"></span> Bajo meta (<95%)</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #8BC34A; display: inline-block; border-radius: 2px;"></span> Cumple (&ge;36%)</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #C0392B; display: inline-block; border-radius: 2px;"></span> Bajo meta (<36%)</span>
         </div>
       </div>
     </div>
@@ -250,7 +250,7 @@ export class DashboardComponent {
     return this.svcs().filter(x => x.ubr != null).map(x => ({
       name: x.id.replace('OV-', ''),
       value: x.ubr || 0,
-      ok: (x.ubr || 0) >= 95
+      ok: (x.ubr || 0) >= 36
     }));
   });
 

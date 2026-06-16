@@ -78,7 +78,7 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
 
       <!-- Technicians Grid -->
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 20px; margin-bottom: 30px;">
-        <div *ngFor="let t of filteredTecnicos()" class="m-card" style="background: #FFF; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.09); padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: var(--transition);">
+        <div *ngFor="let t of filteredTecnicos()" class="m-card" style="cursor: pointer; background: #FFF; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.09); padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: var(--transition);" (click)="openDetail(t)">
           
           <div>
             <!-- Card Header -->
@@ -146,10 +146,10 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
 
           <!-- Card Actions -->
           <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: auto; border-top: 0.5px solid rgba(0,0,0,0.06); padding-top: 12px;">
-            <button class="m-btn m-btn-sm" style="border-radius: 6px; font-weight: 600; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;" (click)="openEdit(t)">
+            <button class="m-btn m-btn-sm" style="border-radius: 6px; font-weight: 600; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px;" (click)="$event.stopPropagation(); openEdit(t)">
               ✎ Editar
             </button>
-            <button class="m-btn m-btn-sm m-btn-dan" style="border-radius: 6px; font-weight: 600; padding: 4px 8px;" (click)="confirmDelete(t.id)">
+            <button class="m-btn m-btn-sm m-btn-dan" style="border-radius: 6px; font-weight: 600; padding: 4px 8px;" (click)="$event.stopPropagation(); confirmDelete(t.id)">
               ✕
             </button>
           </div>
@@ -402,6 +402,131 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
           </div>
         </div>
       </div>
+
+      <!-- --- DETAIL MODAL --- -->
+      <div *ngIf="detailModal" class="m-modal-overlay" (click)="closeDetailOnOverlay($event)">
+        <div class="m-modal-container" style="max-width: 680px; max-height: 85vh; display: flex; flex-direction: column;">
+          <div class="m-modal-header" style="background: var(--surf); border-bottom: 0.5px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;"
+                   [style.background]="getComplianceBg(habPct(detailModal.baseReqs))"
+                   [style.color]="getComplianceColor(habPct(detailModal.baseReqs))">
+                {{ getInitials(detailModal.nombre) }}
+              </div>
+              <div>
+                <span class="m-modal-title" style="font-size: 16px; font-weight: 700; margin: 0; line-height: 1.2;">
+                  {{ detailModal.nombre }}
+                </span>
+                <div style="font-size: 12px; color: var(--txt-m); margin-top: 2px;">
+                  {{ detailModal.especialidad }} · {{ detailModal.nivel }}
+                </div>
+              </div>
+            </div>
+            <button class="m-modal-close" (click)="detailModal = null">×</button>
+          </div>
+          
+          <div class="m-modal-body" style="padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px;">
+            <!-- Resumen del Personal -->
+            <div>
+              <h4 style="font-size: 13px; font-weight: 700; color: #1A5FA8; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                Resumen del Personal
+              </h4>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; background: var(--surf); padding: 12px 16px; border-radius: 8px; font-size: 12px;">
+                <div><span style="color: var(--txt-m);">Cédula/Doc:</span> <strong>{{ detailModal.doc }}</strong></div>
+                <div><span style="color: var(--txt-m);">Fecha Ingreso:</span> <strong>{{ detailModal.ingreso || '—' }}</strong></div>
+                <div><span style="color: var(--txt-m);">Contrato:</span> <strong>{{ detailModal.contrato || '—' }}</strong></div>
+                <div><span style="color: var(--txt-m);">Teléfono:</span> <strong>{{ detailModal.tel || '—' }}</strong></div>
+                <div><span style="color: var(--txt-m);">Email:</span> <strong>{{ detailModal.email || '—' }}</strong></div>
+                <div><span style="color: var(--txt-m);">EPS / ARL:</span> <strong>{{ detailModal.eps || '—' }} / {{ detailModal.arl || '—' }}</strong></div>
+                <div style="grid-column: span 2;"><span style="color: var(--txt-m);">Observaciones:</span> <strong>{{ detailModal.obs || '—' }}</strong></div>
+              </div>
+            </div>
+
+            <!-- Requisitos Base -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h4 style="font-size: 13px; font-weight: 700; color: #1A5FA8; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                  Requisitos Base
+                </h4>
+                <span class="m-pill" [style.background]="getComplianceBg(habPct(detailModal.baseReqs))" [style.color]="getComplianceColor(habPct(detailModal.baseReqs))" style="font-weight: 700;">
+                  Habilitación Base: {{ habPct(detailModal.baseReqs) }}%
+                </span>
+              </div>
+              <div style="border: 0.5px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <table class="m-table" style="width: 100%; margin: 0;">
+                  <thead>
+                    <tr style="background: var(--surf);">
+                      <th class="m-th" style="padding: 6px 10px; font-size: 11px;">Requisito</th>
+                      <th class="m-th" style="padding: 6px 10px; font-size: 11px; width: 120px;">Vence</th>
+                      <th class="m-th" style="padding: 6px 10px; font-size: 11px; width: 110px; text-align: center;">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let r of detailModal.baseReqs" class="m-tr">
+                      <td class="m-td" style="padding: 6px 10px; font-size: 11px; font-weight: 600;">{{ r.nombre }}</td>
+                      <td class="m-td" style="padding: 6px 10px; font-size: 11px; color: var(--txt-m);">{{ r.vence || 'Sin fecha' }}</td>
+                      <td class="m-td" style="padding: 6px 10px; text-align: center;">
+                        <span class="m-pill" style="font-size: 9px; padding: 2px 6px;" [style.background]="getReqStatusStyle(r.estado).bg" [style.color]="getReqStatusStyle(r.estado).fg">
+                          {{ getReqStatusStyle(r.estado).lb }}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr *ngIf="detailModal.baseReqs.length === 0">
+                      <td colspan="3" style="text-align: center; padding: 12px; font-size: 11px; color: var(--txt-m); font-style: italic;">
+                        No hay requisitos base registrados.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Requisitos por Cliente -->
+            <div>
+              <h4 style="font-size: 13px; font-weight: 700; color: #1A5FA8; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                Requisitos por Cliente
+              </h4>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div *ngFor="let c of detailModal.clientes" style="border: 0.5px solid var(--border); border-radius: 8px; padding: 12px; background: #FFF;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 0.5px solid rgba(0,0,0,0.05); padding-bottom: 4px;">
+                    <strong style="font-size: 12px; color: #1A1A1A;">{{ c.nombre }}</strong>
+                    <span class="m-pill" [style.background]="getComplianceBg(habPct(c.reqs))" [style.color]="getComplianceColor(habPct(c.reqs))" style="font-weight: 700;">
+                      {{ habPct(c.reqs) }}% habilitado
+                    </span>
+                  </div>
+                  <table class="m-table" style="width: 100%; margin: 0;">
+                    <thead>
+                      <tr style="background: rgba(0,0,0,0.01);">
+                        <th class="m-th" style="padding: 4px 6px; font-size: 10px;">Certificación</th>
+                        <th class="m-th" style="padding: 4px 6px; font-size: 10px; width: 120px;">Vence</th>
+                        <th class="m-th" style="padding: 4px 6px; font-size: 10px; width: 100px; text-align: center;">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let cr of c.reqs" class="m-tr">
+                        <td class="m-td" style="padding: 4px 6px; font-size: 10px;">{{ cr.nombre }}</td>
+                        <td class="m-td" style="padding: 4px 6px; font-size: 10px; color: var(--txt-m);">{{ cr.vence || 'Sin fecha' }}</td>
+                        <td class="m-td" style="padding: 4px 6px; text-align: center;">
+                          <span class="m-pill" style="font-size: 8px; padding: 1px 5px;" [style.background]="getReqStatusStyle(cr.estado).bg" [style.color]="getReqStatusStyle(cr.estado).fg">
+                            {{ getReqStatusStyle(cr.estado).lb }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div *ngIf="detailModal.clientes.length === 0" style="text-align: center; padding: 16px; font-size: 11px; color: var(--txt-m); font-style: italic; border: 1px dashed var(--border); border-radius: 8px;">
+                  No hay clientes o certificaciones por cliente registrados.
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="m-modal-header" style="border-top: 0.5px solid var(--border); border-bottom: none; display: flex; justify-content: flex-end; padding: 10px 20px;">
+            <button class="m-btn m-btn-pri" style="background: #1A5FA8; border-color: #1A5FA8;" (click)="detailModal = null">Cerrar</button>
+          </div>
+        </div>
+      </div>
     </div>
   `
 })
@@ -415,6 +540,7 @@ export class TecnicosComponent {
   modalTab: 'perfil' | 'base' | 'clientes' = 'perfil';
   form: Partial<Tecnico> = {};
   isEdit = false;
+  detailModal: Tecnico | null = null;
 
   // Confirmations
   confId: string | null = null;
@@ -676,6 +802,16 @@ export class TecnicosComponent {
   closeOnOverlay(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       this.modal = null;
+    }
+  }
+
+  openDetail(t: Tecnico) {
+    this.detailModal = t;
+  }
+
+  closeDetailOnOverlay(event: MouseEvent) {
+    if (event.target === event.currentTarget) {
+      this.detailModal = null;
     }
   }
 }

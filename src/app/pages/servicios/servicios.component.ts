@@ -104,8 +104,8 @@ import { DbService, Servicio } from '../../services/db.service';
                 </td>
                 <td class="m-td">
                   <span *ngIf="x.ubr !== null && x.ubr !== undefined" class="m-pill"
-                        [style.background]="x.ubr >= 95 ? 'var(--green-l)' : 'var(--red-l)'"
-                        [style.color]="x.ubr >= 95 ? 'var(--green-d)' : 'var(--red-d)'">
+                        [style.background]="x.ubr >= 36 ? 'var(--green-l)' : 'var(--red-l)'"
+                        [style.color]="x.ubr >= 36 ? 'var(--green-d)' : 'var(--red-d)'">
                     {{ x.ubr }}%
                   </span>
                   <span *ngIf="x.ubr === null || x.ubr === undefined" style="color: var(--txt-m); font-size: 11px;">—</span>
@@ -420,7 +420,7 @@ export class ServiciosComponent {
     const cost = Number(this.form.costo) || 0;
     const ub = this.calculateUB(val, cost);
     if (ub === null) return 'var(--surf)';
-    return ub >= 95 ? 'var(--green-l)' : 'var(--red-l)';
+    return ub >= 36 ? 'var(--green-l)' : 'var(--red-l)';
   }
 
   getProjectedUBColorText(): string {
@@ -428,7 +428,7 @@ export class ServiciosComponent {
     const cost = Number(this.form.costo) || 0;
     const ub = this.calculateUB(val, cost);
     if (ub === null) return 'var(--txt-m)';
-    return ub >= 95 ? 'var(--green-d)' : 'var(--red-d)';
+    return ub >= 36 ? 'var(--green-d)' : 'var(--red-d)';
   }
 
   // Utilities

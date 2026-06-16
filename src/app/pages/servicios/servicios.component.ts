@@ -152,7 +152,7 @@ import { DbService, Servicio } from '../../services/db.service';
               <div class="m-field">
                 <label class="m-label">Cliente *</label>
                 <select class="m-input" [(ngModel)]="form.cliente">
-                  <option *ngFor="let c of CLTS" [value]="c">{{ c }}</option>
+                  <option *ngFor="let c of clientesList()" [value]="c">{{ c }}</option>
                 </select>
               </div>
               <div class="m-field">
@@ -294,9 +294,9 @@ export class ServiciosComponent {
 
   // Constants
   VEND = ["Carlos Ruiz", "Ana Martínez", "Pedro Gómez"];
-  CLTS = ["Drummond", "Cerrejón", "Ecopetrol", "Promigas", "Glencore", "Carbones del Caribe", "Otro"];
 
   tecnicos = computed(() => this.dbService.tecnicos());
+  clientesList = computed(() => this.dbService.clientes().map(c => c.nombre));
 
   // Filtered rows (Tracks changes in q(), fE(), and fT())
   rows = computed(() => {
@@ -318,7 +318,7 @@ export class ServiciosComponent {
     this.form = {
       id: this.nid(this.dbService.servicios(), 'OV'),
       oc: '',
-      cliente: this.CLTS[0],
+      cliente: this.clientesList().length > 0 ? this.clientesList()[0] : '',
       vendedor: this.VEND[0],
       tipo: 'Preventivo',
       estado: 'En progreso',

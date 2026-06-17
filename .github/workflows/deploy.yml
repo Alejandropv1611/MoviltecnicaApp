@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'        # ← CAMBIO CLAVE: Angular 20 requiere Node 20.19+ o 22+
           cache: 'npm'
 
       - name: Install dependencies
@@ -32,6 +32,9 @@ jobs:
 
       - name: Build Angular
         run: npx ng build --configuration production --base-href /MoviltecnicaApp/
+
+      - name: Verificar output del build
+        run: ls -la dist/moviltecnica-app/browser/
 
       - name: Copy index.html as 404.html
         run: cp dist/moviltecnica-app/browser/index.html dist/moviltecnica-app/browser/404.html

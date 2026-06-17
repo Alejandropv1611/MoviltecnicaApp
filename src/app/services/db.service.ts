@@ -12,12 +12,6 @@ export interface ClientRequirement {
   reqs: BaseRequirement[];
 }
 
-export interface Cliente {
-  id: string;
-  nombre: string;
-  reqs: BaseRequirement[];
-}
-
 export interface Tecnico {
   id: string;
   nombre: string;
@@ -57,15 +51,6 @@ export interface Servicio {
   estado: 'Finalizado' | 'En progreso' | 'En riesgo' | 'Programado';
   creado: string;
   tecnico?: string;
-}
-
-export interface Planificacion {
-  id: string;
-  tecnico_id: string;
-  fecha: string;
-  tipo: 'Actividad' | 'Servicio' | 'Compensación' | 'Vacaciones' | 'Otro';
-  descripcion: string;
-  creado: string;
 }
 
 export interface EppItem {
@@ -224,15 +209,13 @@ export class DbService {
   private supabaseSvc = inject(SupabaseService);
   private supabase = this.supabaseSvc.supabase;
 
-  // Reactive Signals for all collections
+  // Reactive Signals for all 6 collections
   public servicios = signal<Servicio[]>([]);
   public tecnicos = signal<Tecnico[]>([]);
   public solicEpp = signal<SolicEpp[]>([]);
   public viaticos = signal<Viatico[]>([]);
   public insumos = signal<Insumo[]>([]);
   public repuestos = signal<Repuesto[]>([]);
-  public clientes = signal<Cliente[]>([]);
-  public planificaciones = signal<Planificacion[]>([]);
 
   constructor() {
     this.init();
@@ -241,15 +224,13 @@ export class DbService {
   private async init() {
     console.log("[DbService] Initializing - Fetching from Supabase...");
     try {
-      const [sRes, tRes, eRes, vRes, iRes, rRes, cRes, pRes] = await Promise.all([
+      const [sRes, tRes, eRes, vRes, iRes, rRes] = await Promise.all([
         this.supabase.from('servicios').select('*'),
         this.supabase.from('tecnicos').select('*'),
         this.supabase.from('solic_epp').select('*'),
         this.supabase.from('viaticos').select('*'),
         this.supabase.from('insumos').select('*'),
         this.supabase.from('repuestos').select('*'),
-        this.supabase.from('clientes').select('*'),
-        this.supabase.from('planificaciones').select('*'),
       ]);
 
       console.log("[DbService] Fetch results:", {
@@ -259,8 +240,6 @@ export class DbService {
         viaticos: vRes.data?.length || 0,
         insumos: iRes.data?.length || 0,
         repuestos: rRes.data?.length || 0,
-        clientes: cRes.data?.length || 0,
-        planificaciones: pRes.data?.length || 0,
         servicios_error: sRes.error?.message,
         tecnicos_error: tRes.error?.message,
       });
@@ -301,18 +280,6 @@ export class DbService {
       if (vRes.data) this.viaticos.set(vRes.data as Viatico[]);
       if (iRes.data) this.insumos.set(iRes.data as Insumo[]);
       if (rRes.data) this.repuestos.set(rRes.data as Repuesto[]);
-      
-      if (cRes.data) {
-        const parsedClientes = cRes.data.map((c: any) => ({
-          ...c,
-          reqs: this.parseJsonField(c.reqs, []),
-        }));
-        this.clientes.set(parsedClientes as Cliente[]);
-      }
-
-      if (pRes.data) {
-        this.planificaciones.set(pRes.data as Planificacion[]);
-      }
       
       console.log("[DbService] Initialization complete. Signals set.");
     } catch (err) {
@@ -366,8 +333,6 @@ export class DbService {
       case 'viaticos': this.viaticos.set(data); break;
       case 'insumos': this.insumos.set(data); break;
       case 'repuestos': this.repuestos.set(data); break;
-      case 'clientes': this.clientes.set(data); break;
-      case 'planificaciones': this.planificaciones.set(data); break;
     }
   }
 
@@ -379,8 +344,6 @@ export class DbService {
       case 'viaticos': return this.viaticos();
       case 'insumos': return this.insumos();
       case 'repuestos': return this.repuestos();
-      case 'clientes': return this.clientes();
-      case 'planificaciones': return this.planificaciones();
       default: return [];
     }
   }
@@ -412,13 +375,6 @@ export class DbService {
       }
     }
     
-    if (sbTable === 'clientes') {
-      if (dataToSave.reqs && typeof dataToSave.reqs === 'object') {
-        dataToSave.reqs = JSON.stringify(dataToSave.reqs);
-        console.log(`[DbService] Serialized reqs as JSON string`);
-      }
-    }
-    
     console.log(`[DbService] Data to save (after serialization):`, JSON.stringify(dataToSave));
     
     // Save to cloud first
@@ -445,9 +401,6 @@ export class DbService {
     }
     if (colName === 'solicEpp') {
       signalItem.items = this.parseJsonField(item.items, []);
-    }
-    if (colName === 'clientes') {
-      signalItem.reqs = this.parseJsonField(item.reqs, []);
     }
     if (exIdx >= 0) {
       updatedList = list.map((x, i) => i === exIdx ? { ...x, ...signalItem } : x);
@@ -476,12 +429,11 @@ export class DbService {
 
   // Helper values
   public getClientesList(): string[] {
-    return this.clientes().map(c => c.nombre).sort();
+    return Object.keys(REQ_CLIENTE_DEFAULT);
   }
 
   public getClienteDefaultReqs(cliente: string): BaseRequirement[] {
-    const c = this.clientes().find(x => x.nombre === cliente);
-    return c ? c.reqs.map(r => ({ ...r })) : [];
+    return (REQ_CLIENTE_DEFAULT[cliente] || []).map((r: any) => ({ ...r }));
   }
 
   public getBaseDefaultReqs(): BaseRequirement[] {

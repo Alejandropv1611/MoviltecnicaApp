@@ -1,6 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { DbService } from '../../services/db.service';
 import { AuthService } from '../../services/auth.service';
 import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSingleComponent } from '../../components/svg-charts';
@@ -10,7 +9,6 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     CircularRingComponent,
     SvgPieComponent,
     SvgBarGroupComponent,
@@ -30,15 +28,6 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
         </button>
       </div>
 
-      <!-- Filters Row -->
-      <div style="display: flex; gap: 14px; margin-bottom: 20px; align-items: center; background: #FFF; padding: 12px 18px; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.09);">
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <label style="font-size: 13px; font-weight: 700; color: #4B5563;">Periodo:</label>
-          <input type="month" class="m-input" [ngModel]="fDate()" (ngModelChange)="fDate.set($event)" style="width: 160px; padding: 6px 12px;"/>
-        </div>
-        <button class="m-btn m-btn-sm" style="background: var(--surf); border-color: var(--border);" *ngIf="fDate()" (click)="fDate.set('')">✕ Ver Histórico Global</button>
-      </div>
-
       <!-- Metric Cards Grid -->
       <div class="m-metric-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px;">
         <div class="m-card" style="padding: 13px 15px;">
@@ -55,8 +44,8 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
 
         <div class="m-card" style="padding: 13px 15px;">
           <div style="font-size:11px; font-weight:600; color:var(--txt-m); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px;">UB promedio</div>
-          <div style="font-size:22px; font-weight:700; line-height:1;" [style.color]="ubP() >= 36 ? 'var(--green)' : 'var(--amber)'">{{ ubP() }}%</div>
-          <div style="font-size:11px; color:var(--txt-m); margin-top:4px;">Meta: &ge;36%</div>
+          <div style="font-size:22px; font-weight:700; line-height:1;" [style.color]="ubP() >= 95 ? 'var(--green)' : 'var(--amber)'">{{ ubP() }}%</div>
+          <div style="font-size:11px; color:var(--txt-m); margin-top:4px;">Meta: &ge;95%</div>
         </div>
 
         <div class="m-card" style="padding: 13px 15px;">
@@ -84,7 +73,7 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
           <div style="font-size: 13px; font-weight: 700; margin-bottom: 12px;">KPIs operacionales</div>
           <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 8px;">
             <app-circular-ring [val]="pTime()" label="Tiempo ≤30d" [meta]="95"></app-circular-ring>
-            <app-circular-ring [val]="ubP()" label="UB ≥36%" [meta]="36"></app-circular-ring>
+            <app-circular-ring [val]="ubP()" label="UB ≥95%" [meta]="95"></app-circular-ring>
             <app-circular-ring [val]="pHH()" label="H.H ≥95%" [meta]="95"></app-circular-ring>
           </div>
         </div>
@@ -139,12 +128,12 @@ import { CircularRingComponent, SvgPieComponent, SvgBarGroupComponent, SvgBarSin
       <!-- UB Real Chart -->
       <div *ngIf="ubD().length > 0" class="m-card" style="margin-bottom: 14px;">
         <div style="font-size: 13px; font-weight: 700; margin-bottom: 3px;">
-          UB Real por servicio <span style="font-weight: 400; color: var(--txt-m); font-size: 12px;">— Meta &ge;36%</span>
+          UB Real por servicio <span style="font-weight: 400; color: var(--txt-m); font-size: 12px;">— Meta &gt;95%</span>
         </div>
-        <app-svg-bar-single [data]="ubD()" unit="%" [domain]="[0, 100]" [customColorScale]="true" [barWidth]="22"></app-svg-bar-single>
+        <app-svg-bar-single [data]="ubD()" unit="%" [domain]="[85, 100]" [customColorScale]="true" [barWidth]="22"></app-svg-bar-single>
         <div style="display: flex; gap: 12px; justify-content: center; font-size: 11px; color: var(--txt-m); margin-top: 8px;">
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #8BC34A; display: inline-block; border-radius: 2px;"></span> Cumple (&ge;36%)</span>
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #C0392B; display: inline-block; border-radius: 2px;"></span> Bajo meta (<36%)</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #8BC34A; display: inline-block; border-radius: 2px;"></span> Cumple (&ge;95%)</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 10px; height: 10px; background: #C0392B; display: inline-block; border-radius: 2px;"></span> Bajo meta (<95%)</span>
         </div>
       </div>
     </div>
@@ -178,17 +167,7 @@ export class DashboardComponent {
   private dbService = inject(DbService);
   public authService = inject(AuthService);
 
-  fDate = signal('');
-
-  svcs = computed(() => {
-    const d = this.fDate();
-    let list = this.dbService.servicios();
-    if (d) {
-      list = list.filter(x => x.creado && x.creado.startsWith(d));
-    }
-    return list;
-  });
-  
+  svcs = computed(() => this.dbService.servicios());
   tecs = computed(() => this.dbService.tecnicos());
 
   tv = computed(() => this.svcs().reduce((s, x) => s + (x.valor || 0), 0));
@@ -250,7 +229,7 @@ export class DashboardComponent {
     return this.svcs().filter(x => x.ubr != null).map(x => ({
       name: x.id.replace('OV-', ''),
       value: x.ubr || 0,
-      ok: (x.ubr || 0) >= 36
+      ok: (x.ubr || 0) >= 95
     }));
   });
 

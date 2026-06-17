@@ -672,34 +672,16 @@ export class RecursosComponent {
     if (!this.isGenericFormValid()) return;
     const tab = this.activeTab();
     
-    let payload: any = {
-      id: this.genericForm.id,
-      ov: this.genericForm.ov,
-      estado: this.genericForm.estado
-    };
-
+    // cast numbers
     if (tab === 'viaticos') {
-      payload.tecnico = this.genericForm.tecnico;
-      payload.concepto = this.genericForm.concepto;
-      payload.fecha = this.genericForm.fecha;
-      payload.dias = Number(this.genericForm.dias) || 0;
-      payload.vpd = Number(this.genericForm.vpd) || 0;
-    } else if (tab === 'insumos') {
-      payload.insumo = this.genericForm.insumo;
-      payload.unidad = this.genericForm.unidad;
-      payload.proveedor = this.genericForm.proveedor;
-      payload.qty = Number(this.genericForm.qty) || 0;
-      payload.cu = Number(this.genericForm.cu) || 0;
-    } else if (tab === 'repuestos') {
-      payload.ref = this.genericForm.ref;
-      payload.desc = this.genericForm.desc;
-      payload.proveedor = this.genericForm.proveedor;
-      payload.garantia = this.genericForm.garantia;
-      payload.qty = Number(this.genericForm.qty) || 0;
-      payload.cu = Number(this.genericForm.cu) || 0;
+      this.genericForm.dias = Number(this.genericForm.dias) || 0;
+      this.genericForm.vpd = Number(this.genericForm.vpd) || 0;
+    } else {
+      this.genericForm.qty = Number(this.genericForm.qty) || 0;
+      this.genericForm.cu = Number(this.genericForm.cu) || 0;
     }
 
-    await this.dbService.upsert(tab as any, payload);
+    await this.dbService.upsert(tab as any, { ...this.genericForm });
     this.genericModal = null;
   }
 

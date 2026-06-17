@@ -12,6 +12,12 @@ export interface ClientRequirement {
   reqs: BaseRequirement[];
 }
 
+export interface Cliente {
+  id: string;
+  nombre: string;
+  reqs: BaseRequirement[];
+}
+
 export interface Tecnico {
   id: string;
   nombre: string;
@@ -27,6 +33,15 @@ export interface Tecnico {
   obs: string;
   baseReqs: BaseRequirement[];
   clientes: ClientRequirement[];
+}
+
+export interface Planificacion {
+  id: string;
+  tecnico_id: string;
+  fecha: string;
+  tipo: string;
+  descripcion: string;
+  creado: string;
 }
 
 export interface Servicio {
@@ -212,6 +227,8 @@ export class DbService {
   // Reactive Signals for all 6 collections
   public servicios = signal<Servicio[]>([]);
   public tecnicos = signal<Tecnico[]>([]);
+  public clientes = signal<Cliente[]>([]);
+  public planificaciones = signal<Planificacion[]>([]);
   public solicEpp = signal<SolicEpp[]>([]);
   public viaticos = signal<Viatico[]>([]);
   public insumos = signal<Insumo[]>([]);
@@ -224,9 +241,11 @@ export class DbService {
   private async init() {
     console.log("[DbService] Initializing - Fetching from Supabase...");
     try {
-      const [sRes, tRes, eRes, vRes, iRes, rRes] = await Promise.all([
+      const [sRes, tRes, cRes, pRes, eRes, vRes, iRes, rRes] = await Promise.all([
         this.supabase.from('servicios').select('*'),
         this.supabase.from('tecnicos').select('*'),
+        this.supabase.from('clientes').select('*'),
+        this.supabase.from('planificaciones').select('*'),
         this.supabase.from('solic_epp').select('*'),
         this.supabase.from('viaticos').select('*'),
         this.supabase.from('insumos').select('*'),
@@ -236,6 +255,8 @@ export class DbService {
       console.log("[DbService] Fetch results:", {
         servicios: sRes.data?.length || 0,
         tecnicos: tRes.data?.length || 0,
+        clientes: cRes.data?.length || 0,
+        planificaciones: pRes.data?.length || 0,
         solicEpp: eRes.data?.length || 0,
         viaticos: vRes.data?.length || 0,
         insumos: iRes.data?.length || 0,
@@ -268,6 +289,16 @@ export class DbService {
         }));
         this.tecnicos.set(parsedTecs as Tecnico[]);
       }
+
+      if (cRes.data) {
+        const parsedClientes = cRes.data.map((c: any) => ({
+          ...c,
+          reqs: this.parseJsonField(c.reqs, []),
+        }));
+        this.clientes.set(parsedClientes as Cliente[]);
+      }
+
+      if (pRes.data) this.planificaciones.set(pRes.data as Planificacion[]);
 
       if (eRes.data) {
         const parsedEpp = eRes.data.map((e: any) => ({
@@ -329,6 +360,8 @@ export class DbService {
     switch(key) {
       case 'servicios': this.servicios.set(data); break;
       case 'tecnicos': this.tecnicos.set(data); break;
+      case 'clientes': this.clientes.set(data); break;
+      case 'planificaciones': this.planificaciones.set(data); break;
       case 'solicEpp': this.solicEpp.set(data); break;
       case 'viaticos': this.viaticos.set(data); break;
       case 'insumos': this.insumos.set(data); break;
@@ -340,6 +373,8 @@ export class DbService {
     switch(colName) {
       case 'servicios': return this.servicios();
       case 'tecnicos': return this.tecnicos();
+      case 'clientes': return this.clientes();
+      case 'planificaciones': return this.planificaciones();
       case 'solicEpp': return this.solicEpp();
       case 'viaticos': return this.viaticos();
       case 'insumos': return this.insumos();

@@ -59,6 +59,15 @@ export interface Servicio {
   tecnico?: string;
 }
 
+export interface Planificacion {
+  id: string;
+  tecnico_id: string;
+  fecha: string;
+  tipo: 'Actividad' | 'Servicio' | 'Compensación' | 'Vacaciones' | 'Otro';
+  descripcion: string;
+  creado: string;
+}
+
 export interface EppItem {
   desc: string;
   qty: number;
@@ -215,7 +224,7 @@ export class DbService {
   private supabaseSvc = inject(SupabaseService);
   private supabase = this.supabaseSvc.supabase;
 
-  // Reactive Signals for all 6 collections
+  // Reactive Signals for all collections
   public servicios = signal<Servicio[]>([]);
   public tecnicos = signal<Tecnico[]>([]);
   public solicEpp = signal<SolicEpp[]>([]);
@@ -223,6 +232,7 @@ export class DbService {
   public insumos = signal<Insumo[]>([]);
   public repuestos = signal<Repuesto[]>([]);
   public clientes = signal<Cliente[]>([]);
+  public planificaciones = signal<Planificacion[]>([]);
 
   constructor() {
     this.init();
@@ -231,7 +241,7 @@ export class DbService {
   private async init() {
     console.log("[DbService] Initializing - Fetching from Supabase...");
     try {
-      const [sRes, tRes, eRes, vRes, iRes, rRes, cRes] = await Promise.all([
+      const [sRes, tRes, eRes, vRes, iRes, rRes, cRes, pRes] = await Promise.all([
         this.supabase.from('servicios').select('*'),
         this.supabase.from('tecnicos').select('*'),
         this.supabase.from('solic_epp').select('*'),
@@ -239,6 +249,7 @@ export class DbService {
         this.supabase.from('insumos').select('*'),
         this.supabase.from('repuestos').select('*'),
         this.supabase.from('clientes').select('*'),
+        this.supabase.from('planificaciones').select('*'),
       ]);
 
       console.log("[DbService] Fetch results:", {
@@ -249,6 +260,7 @@ export class DbService {
         insumos: iRes.data?.length || 0,
         repuestos: rRes.data?.length || 0,
         clientes: cRes.data?.length || 0,
+        planificaciones: pRes.data?.length || 0,
         servicios_error: sRes.error?.message,
         tecnicos_error: tRes.error?.message,
       });
@@ -296,6 +308,10 @@ export class DbService {
           reqs: this.parseJsonField(c.reqs, []),
         }));
         this.clientes.set(parsedClientes as Cliente[]);
+      }
+
+      if (pRes.data) {
+        this.planificaciones.set(pRes.data as Planificacion[]);
       }
       
       console.log("[DbService] Initialization complete. Signals set.");
@@ -351,6 +367,7 @@ export class DbService {
       case 'insumos': this.insumos.set(data); break;
       case 'repuestos': this.repuestos.set(data); break;
       case 'clientes': this.clientes.set(data); break;
+      case 'planificaciones': this.planificaciones.set(data); break;
     }
   }
 
@@ -363,6 +380,7 @@ export class DbService {
       case 'insumos': return this.insumos();
       case 'repuestos': return this.repuestos();
       case 'clientes': return this.clientes();
+      case 'planificaciones': return this.planificaciones();
       default: return [];
     }
   }

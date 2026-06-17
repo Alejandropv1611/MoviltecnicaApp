@@ -1,0 +1,44 @@
+name: Deploy Angular to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build Angular (producción)
+        run: npx ng build --configuration production --base-href /MoviltecnicaApp/
+
+      - name: Crear archivo 404.html (para rutas de Angular)
+        run: cp dist/moviltecnica-app/browser/index.html dist/moviltecnica-app/browser/404.html
+
+      - name: Crear .nojekyll (evita que GitHub procese con Jekyll)
+        run: touch dist/moviltecnica-app/browser/.nojekyll
+
+      - name: Deploy a gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/moviltecnica-app/browser
+          force_orphan: true

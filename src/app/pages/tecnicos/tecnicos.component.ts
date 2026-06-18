@@ -157,8 +157,6 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
         </div>
       </div>
 
-      </div>
-
       <!-- --- VIEW MODAL (READ-ONLY) --- -->
       <div *ngIf="modal === 'v'" class="m-modal-overlay" (click)="closeOnOverlay($event)">
         <div class="m-modal-container" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;">

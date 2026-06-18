@@ -346,21 +346,27 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
 
             <!-- TAB 2: BASE REQUIREMENTS -->
             <div *ngIf="modalTab === 'base'">
-              <div style="margin-bottom: 12px; font-size: 12px; color: var(--txt-m);">
-                Edita la fecha de vencimiento y el estado de habilitación para los requisitos base de Movitécnica.
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 12px; color: var(--txt-m);">
+                  Edita o añade requisitos base para este técnico.
+                </div>
+                <button class="m-btn m-btn-sm" style="background: var(--surf); border-color: var(--border);" (click)="addBaseReq()">+ Añadir Requisito</button>
               </div>
               <table class="m-table" style="width: 100%;">
                 <thead>
                   <tr>
                     <th class="m-th">Requisito</th>
-                    <th class="m-th" style="width: 190px;">Fecha Vence</th>
-                    <th class="m-th" style="width: 140px;">Estado</th>
-                    <th class="m-th" style="width: 110px; text-align: center;">Indicador</th>
+                    <th class="m-th" style="width: 170px;">Fecha Vence</th>
+                    <th class="m-th" style="width: 130px;">Estado</th>
+                    <th class="m-th" style="width: 100px; text-align: center;">Indicador</th>
+                    <th class="m-th" style="width: 40px; text-align: center;"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let r of form.baseReqs" class="m-tr">
-                    <td class="m-td" style="font-weight: 600;">{{ r.nombre }}</td>
+                  <tr *ngFor="let r of form.baseReqs; let i = index" class="m-tr">
+                    <td class="m-td" style="padding: 4px;">
+                      <input class="m-input" style="padding: 4px 8px; font-size: 11px; font-weight: 600;" [(ngModel)]="r.nombre" placeholder="Nombre del requisito"/>
+                    </td>
                     <td class="m-td">
                       <input type="date" class="m-input" style="padding: 4px 8px; font-size: 11px;" [(ngModel)]="r.vence"/>
                     </td>
@@ -376,6 +382,9 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
                       <span class="m-pill" [style.background]="getReqStatusStyle(r.estado).bg" [style.color]="getReqStatusStyle(r.estado).fg">
                         {{ getReqStatusStyle(r.estado).lb }}
                       </span>
+                    </td>
+                    <td class="m-td" style="text-align: center;">
+                      <button class="m-btn m-btn-sm m-btn-dan" style="padding: 2px 6px; font-size: 10px;" (click)="removeBaseReq(i)">✕</button>
                     </td>
                   </tr>
                 </tbody>
@@ -680,6 +689,24 @@ export class TecnicosComponent {
     if (this.confId) {
       this.dbService.remove('tecnicos', this.confId);
       this.confId = null;
+    }
+  }
+
+  // --- BASE REQS LOGIC ---
+  addBaseReq() {
+    if (!this.form.baseReqs) {
+      this.form.baseReqs = [];
+    }
+    this.form.baseReqs.push({
+      nombre: '',
+      vence: '',
+      estado: 'pendiente'
+    });
+  }
+
+  removeBaseReq(index: number) {
+    if (this.form.baseReqs) {
+      this.form.baseReqs.splice(index, 1);
     }
   }
 

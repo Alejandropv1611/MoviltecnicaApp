@@ -69,7 +69,7 @@ import { DbService, Tecnico, BaseRequirement, ClientRequirement } from '../../se
         </div>
         <select class="m-input" [ngModel]="fC()" (ngModelChange)="fC.set($event)" style="width: 220px; border-radius: 8px;">
           <option value="">Todos los clientes</option>
-          <option *ngFor="let c of clientsList" [value]="c">{{ c }}</option>
+          <option *ngFor="let c of clientsList()" [value]="c">{{ c }}</option>
         </select>
         <span style="margin-left: auto; font-size: 12px; color: var(--txt-m);">
           {{ filteredTecnicos().length }} técnicos filtrados
@@ -493,7 +493,7 @@ export class TecnicosComponent {
   confId: string | null = null;
   confName = '';
 
-  clientsList = this.dbService.getClientesList();
+  clientsList = computed(() => this.dbService.getClientesList());
 
   // Filtered technicians list based on Search text and Client dropdown
   filteredTecnicos = computed(() => {
@@ -686,7 +686,7 @@ export class TecnicosComponent {
   // --- REQUIREMENTS FORM TABS LOGIC ---
   getUnassignedClientsForForm(): string[] {
     const assigned = (this.form.clientes || []).map(c => c.nombre);
-    return this.clientsList.filter(c => !assigned.includes(c));
+    return this.clientsList().filter(c => !assigned.includes(c));
   }
 
   addClientToForm(clientName: string) {

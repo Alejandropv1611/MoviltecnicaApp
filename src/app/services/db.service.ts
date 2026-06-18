@@ -464,11 +464,15 @@ export class DbService {
 
   // Helper values
   public getClientesList(): string[] {
-    return Object.keys(REQ_CLIENTE_DEFAULT);
+    return this.clientes().map(c => c.nombre);
   }
 
   public getClienteDefaultReqs(cliente: string): BaseRequirement[] {
-    return (REQ_CLIENTE_DEFAULT[cliente] || []).map((r: any) => ({ ...r }));
+    const dbClient = this.clientes().find(c => c.nombre === cliente);
+    if (dbClient) {
+      return dbClient.reqs.map(r => ({ ...r, estado: 'pendiente' as const }));
+    }
+    return [];
   }
 
   public getBaseDefaultReqs(): BaseRequirement[] {

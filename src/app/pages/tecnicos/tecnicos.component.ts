@@ -648,7 +648,7 @@ export class TecnicosComponent {
   async save() {
     if (!this.isFormValid()) return;
     
-    // Crear objeto sin las columnas JSONB problemáticas
+    // Crear objeto incluyendo los arrays de requisitos y clientes
     const itemToSave = {
       id: this.form.id!,
       nombre: this.form.nombre!,
@@ -661,9 +661,9 @@ export class TecnicosComponent {
       email: this.form.email || '',
       arl: this.form.arl || 'Positiva',
       eps: this.form.eps || 'Sura',
-      obs: this.form.obs || ''
-      // NOTA: baseReqs y clientes no se guardan en esta versión
-      // para evitar problemas de caché de Supabase con columnas JSONB
+      obs: this.form.obs || '',
+      baseReqs: this.form.baseReqs || [],
+      clientes: this.form.clientes || []
     };
 
     console.log('[TecnicosComponent] Saving technician:', itemToSave);

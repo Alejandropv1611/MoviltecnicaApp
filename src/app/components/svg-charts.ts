@@ -195,8 +195,8 @@ export class SvgPieComponent implements OnChanges {
         <line x1="40" y1="165" x2="480" y2="165" stroke="rgba(0,0,0,0.09)" stroke-width="1" />
 
         <!-- X Axis Labels -->
-        <g font-size="9" fill="#6B7280" text-anchor="middle">
-          <text *ngFor="let bar of barGroups; let idx = index" [attr.x]="bar.cx" y="180">{{ bar.name }}</text>
+        <g font-size="9" fill="#6B7280" text-anchor="end">
+          <text *ngFor="let bar of barGroups; let idx = index" [attr.transform]="'translate(' + bar.cx + ', 176) rotate(-45)'">{{ bar.name }}</text>
         </g>
 
         <!-- Bars -->
@@ -347,7 +347,7 @@ export class SvgBarGroupComponent implements OnChanges {
   imports: [CommonModule],
   template: `
     <div class="bar-chart-wrapper" style="position: relative; width: 100%;">
-      <svg width="100%" height="170" viewBox="0 0 500 170" style="overflow: hidden;">
+      <svg width="100%" height="190" viewBox="0 0 500 190" style="overflow: visible;">
         <!-- Grid lines -->
         <g stroke="#E8E8E8" stroke-width="0.5">
           <line *ngFor="let grid of gridLines" x1="40" [attr.y1]="grid.y" x2="480" [attr.y2]="grid.y" />
@@ -362,8 +362,8 @@ export class SvgBarGroupComponent implements OnChanges {
         <line x1="40" y1="140" x2="480" y2="140" stroke="rgba(0,0,0,0.09)" stroke-width="1" />
 
         <!-- X Axis Labels -->
-        <g font-size="9" fill="#6B7280" text-anchor="middle">
-          <text *ngFor="let bar of bars; let idx = index" [attr.x]="bar.cx" y="154">{{ bar.name }}</text>
+        <g font-size="9" fill="#6B7280" text-anchor="end">
+          <text *ngFor="let bar of bars; let idx = index" [attr.transform]="'translate(' + bar.cx + ', 152) rotate(-45)'">{{ bar.name }}</text>
         </g>
 
         <!-- Bars -->

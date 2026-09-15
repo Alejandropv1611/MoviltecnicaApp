@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DbService, Servicio } from '../../services/db.service';
+import * as XLSX from 'xlsx';
 
 @Component({
   selector: 'app-servicios',
@@ -9,271 +10,280 @@ import { DbService, Servicio } from '../../services/db.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div>
-      <!-- Page Header -->
-      <div class="m-page-header">
+      <div class="head">
         <div>
-          <h1 class="m-page-title">Control de servicios</h1>
-          <p class="m-page-subtitle">Registro y seguimiento de órdenes de venta</p>
+          <h1>Control de servicios</h1>
+          <div class="sub">Registro y seguimiento de órdenes de venta</div>
         </div>
-        <button class="m-btn m-btn-pri" (click)="openNew()">+ Nueva OV</button>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button id="s-plan" (click)="downloadTemplate()">Plantilla</button>
+          
+          <button id="s-imp" (click)="triggerImport()">Importar Excel</button>
+          <input type="file" id="import-file" style="display:none;" accept=".xlsx, .xls" (change)="importExcel($event)">
+          
+          <button id="s-exp" (click)="exportExcel()">Exportar Excel</button>
+          <button class="suc" id="s-new" (click)="openNew()">+ Nueva OV</button>
+        </div>
       </div>
 
-      <!-- Filters Row -->
-      <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center;">
-        <input class="m-input" [ngModel]="q()" (ngModelChange)="q.set($event)" placeholder="🔍 Buscar OV, cliente, OT…" style="width: 240px;"/>
-        
-        <select class="m-input" [ngModel]="fE()" (ngModelChange)="fE.set($event)" style="width: 175px;">
+      <div class="bar">
+        <input id="s-q" placeholder="Buscar OV, cliente, OT..." style="width:230px" [ngModel]="q()" (ngModelChange)="q.set($event)">
+        <select id="s-e" [ngModel]="fE()" (ngModelChange)="fE.set($event)">
           <option value="">Todos los estados</option>
+          <option value="Programado">Programado</option>
           <option value="En progreso">En progreso</option>
           <option value="Finalizado">Finalizado</option>
           <option value="En riesgo">En riesgo</option>
-          <option value="Programado">Programado</option>
         </select>
-        
-        <select class="m-input" [ngModel]="fT()" (ngModelChange)="fT.set($event)" style="width: 155px;">
+        <select id="s-t" [ngModel]="fT()" (ngModelChange)="fT.set($event)">
           <option value="">Todos los tipos</option>
           <option value="Preventivo">Preventivo</option>
           <option value="Correctivo">Correctivo</option>
           <option value="Emergencia">Emergencia</option>
         </select>
-
-        <span style="margin-left: auto; font-size: 12px; color: var(--txt-m);">{{ rows().length }} registros</span>
+        <span class="right">{{ rows().length }} registros · {{ totalRowsVal() }}</span>
       </div>
 
-      <!-- Services Table -->
-      <div class="m-card-flat">
-        <div class="m-table-container">
-          <table class="m-table">
+      <div class="flush">
+        <div class="scroll">
+          <table>
             <thead>
               <tr>
-                <th class="m-th">OV</th>
-                <th class="m-th">F. Creación</th>
-                <th class="m-th">Cliente</th>
-                <th class="m-th">OC</th>
-                <th class="m-th">Descripción</th>
-                <th class="m-th">Tipo</th>
-                <th class="m-th">Valor OV</th>
-                <th class="m-th">Vendedor</th>
-                <th class="m-th">OT</th>
-                <th class="m-th">Lugar</th>
-                <th class="m-th">F.Prog</th>
-                <th class="m-th">F.Fin</th>
-                <th class="m-th">Días</th>
-                <th class="m-th">HH P/E</th>
-                <th class="m-th">UB Real</th>
-                <th class="m-th">Estado</th>
-                <th class="m-th"></th>
+                <th>OV</th>
+                <th>Cliente</th>
+                <th>OC</th>
+                <th class="c">Tipo</th>
+                <th class="c">Valor OV</th>
+                <th class="c">Vendedor</th>
+                <th class="c">Lugar</th>
+                <th class="c">F.Prog</th>
+                <th class="c">F.Fin</th>
+                <th class="c">Días</th>
+                <th class="c">H.H P/E</th>
+                <th class="c">UB P/R</th>
+                <th class="c">Estado</th>
+                <th class="c"></th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let x of rows()" class="m-tr">
-                <td class="m-td"><strong style="color: var(--blue);">{{ x.id }}</strong></td>
-                <td class="m-td" style="font-size: 11px; color: var(--txt-m);">{{ x.creado }}</td>
-                <td class="m-td">{{ x.cliente }}</td>
-                <td class="m-td" style="font-size: 11px; color: var(--txt-m);">{{ x.oc || '—' }}</td>
-                <td class="m-td" style="max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="x.desc">
-                  {{ x.desc }}
+              <tr *ngFor="let s of rows()">
+                <td class="id">{{ s.id }}</td>
+                <td>{{ s.cliente }}</td>
+                <td class="mut">{{ s.oc || '—' }}</td>
+                <td class="c"><span class="p" [ngClass]="tipoP(s.tipo)">{{ s.tipo }}</span></td>
+                <td class="c">{{ cop(s.valor) }}</td>
+                <td class="c">{{ s.vendedor }}</td>
+                <td class="c">{{ s.lugar || '—' }}</td>
+                <td class="c mut">{{ s.fp || '—' }}</td>
+                <td class="c mut">{{ s.ff || '—' }}</td>
+                <td class="c">
+                  <span *ngIf="dd(s.fp, s.ff) !== null" class="p" [ngClass]="dd(s.fp, s.ff)! <= 30 ? 'p-g' : 'p-r'">
+                    {{ dd(s.fp, s.ff) }}d
+                  </span>
+                  <span *ngIf="dd(s.fp, s.ff) === null" class="mut">—</span>
                 </td>
-                <td class="m-td">
-                  <span class="m-pill" [style.background]="getTipoColor(x.tipo) + '22'" [style.color]="getTipoColor(x.tipo)">
-                    {{ x.tipo }}
+                <td class="c">
+                  <span class="p" [ngClass]="(s.hhe <= s.hhp) ? 'p-g' : 'p-r'">
+                    {{ s.hhp }}/{{ s.hhe }}
                   </span>
                 </td>
-                <td class="m-td" style="white-space: nowrap;">{{ cop(x.valor) }}</td>
-                <td class="m-td" style="white-space: nowrap; font-size: 11px;">{{ x.vendedor }}</td>
-                <td class="m-td" style="font-size: 11px; color: var(--txt-m);">{{ x.ot || '—' }}</td>
-                <td class="m-td" style="white-space: nowrap; font-size: 11px;">{{ x.lugar || '—' }}</td>
-                <td class="m-td" style="font-size: 11px;">{{ x.fp || '—' }}</td>
-                <td class="m-td" style="font-size: 11px;">{{ x.ff || '—' }}</td>
-                <td class="m-td">
-                  <span *ngIf="dd(x.fp, x.ff) !== null" class="m-pill" 
-                        [style.background]="dd(x.fp, x.ff)! <= 30 ? 'var(--green-l)' : 'var(--red-l)'" 
-                        [style.color]="dd(x.fp, x.ff)! <= 30 ? 'var(--green-d)' : 'var(--red-d)'">
-                    {{ dd(x.fp, x.ff) }}d
-                  </span>
-                  <span *ngIf="dd(x.fp, x.ff) === null">—</span>
-                </td>
-                <td class="m-td" style="white-space: nowrap;">
-                  <span>{{ x.hhp }}h/{{ x.hhe }}h</span>
-                  <div *ngIf="x.hhp > 0" style="margin-top: 3px; height: 5px; border-radius: 5px; background: var(--border); overflow: hidden;">
-                    <div style="height: 100%; transition: width 0.3s;"
-                         [style.width.%]="mathMin(mathRound(x.hhe / x.hhp * 100), 100)"
-                         [style.background]="(x.hhe / x.hhp * 100) >= 95 ? 'var(--green)' : 'var(--amber)'">
-                    </div>
-                  </div>
-                </td>
-                <td class="m-td">
-                  <span *ngIf="x.ubr !== null && x.ubr !== undefined" class="m-pill"
-                        [style.background]="x.ubr >= 36 ? 'var(--green-l)' : 'var(--red-l)'"
-                        [style.color]="x.ubr >= 36 ? 'var(--green-d)' : 'var(--red-d)'">
-                    {{ x.ubr }}%
-                  </span>
-                  <span *ngIf="x.ubr === null || x.ubr === undefined" style="color: var(--txt-m); font-size: 11px;">—</span>
-                </td>
-                <td class="m-td">
-                  <span class="m-pill" [style.background]="getEstadoStyle(x.estado).bg" [style.color]="getEstadoStyle(x.estado).fg">
-                    {{ x.estado }}
+                <td class="c">
+                  <span *ngIf="s.ubp == null" class="mut">—</span>
+                  <span *ngIf="s.ubp != null" class="p" [ngClass]="s.ubr != null && s.ubr >= s.ubp ? 'p-g' : 'p-r'">
+                    {{ s.ubp }}/{{ s.ubr != null ? s.ubr : '—' }}%
                   </span>
                 </td>
-                <td class="m-td">
-                  <div style="display: flex; gap: 4px;">
-                    <button class="m-btn m-btn-sm" (click)="openEdit(x)">✎</button>
-                    <button class="m-btn m-btn-sm m-btn-dan" (click)="confirmDelete(x.id)">✕</button>
-                  </div>
+                <td class="c">
+                  <span class="p" [ngClass]="pill(s.estado)">{{ s.estado }}</span>
+                </td>
+                <td class="c">
+                  <button class="sm" (click)="openEdit(s)">Editar</button>
+                  <button class="sm dgr" style="margin-left: 4px;" (click)="confirmDelete(s.id)">✕</button>
                 </td>
               </tr>
               <tr *ngIf="rows().length === 0">
-                <td colspan="16" style="text-align: center; padding: 36px; color: var(--txt-m);">
-                  No hay servicios registrados
-                </td>
+                <td colspan="14" class="empty">No hay servicios con ese filtro</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
+      <!-- Overlays (Modal, etc.) -->
       <!-- Add/Edit Modal -->
-      <div *ngIf="modal === 'f'" class="m-modal-overlay" (click)="closeOnOverlay($event)">
-        <div class="m-modal-container" style="max-width: 780px;">
-          <div class="m-modal-header">
-            <span class="m-modal-title">{{ form.creado ? 'Editar OV' : 'Nueva orden de servicio' }}</span>
-            <button class="m-modal-close" (click)="closeModal()">×</button>
+      <div *ngIf="modal === 'f'" class="ov" (click)="closeOnOverlay($event)">
+        <div class="mod">
+          <div class="mod-h">
+            <div>
+              <b>{{ form.creado ? 'Editar OV ' + form.id : 'Nueva orden de servicio' }}</b>
+              <span class="s">Los desplegables salen de Catálogos</span>
+            </div>
+            <button class="x" (click)="closeModal()">×</button>
           </div>
-          <div class="m-modal-body">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px;">
-              <div class="m-field">
-                <label class="m-label">OV *</label>
-                <input class="m-input" [(ngModel)]="form.id" placeholder="Ej: OV-2601"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">OC *</label>
-                <input class="m-input" [(ngModel)]="form.oc" placeholder="Ej: OC-4501"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">Cliente *</label>
-                <select class="m-input" [(ngModel)]="form.cliente">
+          <div class="mod-b">
+            <div class="row2">
+              <div class="fld"><label>OV *</label><input [(ngModel)]="form.id"/></div>
+              <div class="fld"><label>OC *</label><input [(ngModel)]="form.oc"/></div>
+              <div class="fld">
+                <label>Cliente *</label>
+                <select [(ngModel)]="form.cliente">
+                  <option value="">Selecciona</option>
                   <option *ngFor="let c of clientesList()" [value]="c">{{ c }}</option>
                 </select>
               </div>
-              <div class="m-field">
-                <label class="m-label">Vendedor</label>
-                <select class="m-input" [(ngModel)]="form.vendedor">
+              <div class="fld">
+                <label>Vendedor</label>
+                <select [(ngModel)]="form.vendedor">
                   <option *ngFor="let v of VEND" [value]="v">{{ v }}</option>
                 </select>
               </div>
-              <div class="m-field">
-                <label class="m-label">Tipo</label>
-                <select class="m-input" [(ngModel)]="form.tipo">
+              <div class="fld">
+                <label>Tipo</label>
+                <select [(ngModel)]="form.tipo">
                   <option value="Preventivo">Preventivo</option>
                   <option value="Correctivo">Correctivo</option>
                   <option value="Emergencia">Emergencia</option>
                 </select>
               </div>
-              <div class="m-field">
-                <label class="m-label">Estado</label>
-                <select class="m-input" [(ngModel)]="form.estado">
-                  <option value="En progreso">En progreso</option>
+              <div class="fld">
+                <label>Estado</label>
+                <select [(ngModel)]="form.estado">
                   <option value="Programado">Programado</option>
-                  <option value="En riesgo">En riesgo</option>
+                  <option value="En progreso">En progreso</option>
                   <option value="Finalizado">Finalizado</option>
+                  <option value="En riesgo">En riesgo</option>
                 </select>
               </div>
             </div>
 
-            <div class="m-field">
-              <label class="m-label">Descripción *</label>
-              <textarea class="m-input" [(ngModel)]="form.desc" style="min-height: 56px; resize: vertical;"></textarea>
+            <div class="fld">
+              <label>Descripción *</label>
+              <textarea [(ngModel)]="form.desc"></textarea>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 18px;">
-              <div class="m-field">
-                <label class="m-label">OT</label>
-                <input class="m-input" [(ngModel)]="form.ot"/>
+            <div class="row3">
+              <div class="fld"><label>OT</label><input [(ngModel)]="form.ot"/></div>
+              <div class="fld">
+                <label>Lugar</label>
+                <select [(ngModel)]="form.lugar">
+                  <option value="Mina">Mina</option>
+                  <option value="Industria">Industria</option>
+                  <option value="Taller">Taller</option>
+                  <option value="Planta cliente">Planta cliente</option>
+                </select>
               </div>
-              <div class="m-field">
-                <label class="m-label">Unidad/Equipo</label>
-                <input class="m-input" [(ngModel)]="form.unidad"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">Centro de costo</label>
-                <input class="m-input" [(ngModel)]="form.cc"/>
-              </div>
-              <div class="m-field" style="grid-column: span 3;">
-                <label class="m-label">Lugar</label>
-                <input class="m-input" [(ngModel)]="form.lugar"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">F. Programación</label>
-                <input class="m-input" type="date" [(ngModel)]="form.fp"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">F. Finalización</label>
-                <input class="m-input" type="date" [(ngModel)]="form.ff"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">Técnico Asignado</label>
-                <select class="m-input" [(ngModel)]="form.tecnico">
-                  <option value="">(Ninguno)</option>
+              <div class="fld">
+                <label>Técnico</label>
+                <select [(ngModel)]="form.tecnico">
+                  <option value="">Sin asignar</option>
                   <option *ngFor="let t of tecnicos()" [value]="t.nombre">{{ t.nombre }}</option>
                 </select>
               </div>
-              <div class="m-field">
-                <label class="m-label">HH programadas</label>
-                <input class="m-input" type="number" [(ngModel)]="form.hhp"/>
-              </div>
-              <div class="m-field">
-                <label class="m-label">HH ejecutadas</label>
-                <input class="m-input" type="number" [(ngModel)]="form.hhe"/>
-              </div>
+              <div class="fld"><label>F. programación</label><input type="date" [(ngModel)]="form.fp"/></div>
+              <div class="fld"><label>F. finalización</label><input type="date" [(ngModel)]="form.ff"/></div>
+              <div class="fld"><label>H.H programadas</label><input type="number" [(ngModel)]="form.hhp"/></div>
+              <div class="fld"><label>H.H ejecutadas</label><input type="number" [(ngModel)]="form.hhe"/></div>
             </div>
 
-            <!-- Financial Block -->
-            <div style="background: var(--surf); border-radius: var(--radius-sm); padding: 11px 14px; margin-bottom: 14px;">
-              <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px; color: var(--txt-m); text-transform: uppercase;">
-                Financiero
+            <div style="background:#F8FAFC;border-radius:9px;padding:13px 15px;margin-bottom:13px">
+              <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;margin-bottom:11px">Financiero (Ingresa en PEN)</div>
+              <div class="row2">
+                <div class="fld"><label>Valor OV (S/)</label><input type="number" [(ngModel)]="form.valor"/></div>
+                <div class="fld"><label>Costo estimado</label><input type="number" [(ngModel)]="form.costo"/></div>
+                <div class="fld"><label>UB proyectada % *</label><input type="number" [(ngModel)]="form.ubp"/></div>
+                <div class="fld"><label>UB real %</label><input type="number" [(ngModel)]="form.ubr"/></div>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0 18px;">
-                <div class="m-field" style="margin-bottom: 0;">
-                  <label class="m-label">Valor OV (S/)</label>
-                  <input class="m-input" type="number" [(ngModel)]="form.valor"/>
-                </div>
-                <div class="m-field" style="margin-bottom: 0;">
-                  <label class="m-label">Costo estimado</label>
-                  <input class="m-input" type="number" [(ngModel)]="form.costo"/>
-                </div>
-                <div class="m-field" style="margin-bottom: 0;">
-                  <label class="m-label">UB Proyectada %</label>
-                  <input class="m-input" readonly [value]="getProjectedUB()" 
-                         [style.background]="getProjectedUBColorBg()" 
-                         [style.color]="getProjectedUBColorText()" 
-                         style="font-weight: 700;"/>
-                </div>
-                <div class="m-field" style="margin-bottom: 0;">
-                  <label class="m-label">UB Real %</label>
-                  <input class="m-input" type="number" [(ngModel)]="form.ubr"/>
-                </div>
-              </div>
+              <div style="font-size:12px;color:var(--orangeD);background:var(--orangeL);padding:8px 11px;border-radius:7px">La UB proyectada es obligatoria: sin ella el KPI 3 no puede medir esta orden.</div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
-              <button class="m-btn" (click)="closeModal()">Cancelar</button>
-              <button class="m-btn m-btn-pri" [disabled]="!isFormValid()" (click)="save()">
-                {{ form.creado ? 'Guardar cambios' : 'Registrar OV' }}
-              </button>
+            <div *ngIf="err" style="font-size:13px;color:var(--redD);margin-bottom:10px">{{ err }}</div>
+          </div>
+          <div class="mod-f">
+            <span></span>
+            <div style="display:flex;gap:8px">
+              <button (click)="closeModal()">Cancelar</button>
+              <button class="pri" (click)="save()">{{ form.creado ? 'Guardar cambios' : 'Registrar OV' }}</button>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Delete Confirmation -->
-      <div *ngIf="confId" class="m-modal-overlay" style="z-index: 1100;">
-        <div class="m-card" style="max-width: 360px; width: 100%; padding: 24px; background: var(--card); border-radius: var(--radius-md);">
-          <div style="font-size: 14px; margin-bottom: 20px; line-height: 1.6;">
+      <div *ngIf="confId" class="ov" style="z-index: 1100;" (click)="closeOnOverlay($event)">
+        <div class="mod" style="max-width: 360px;">
+          <div class="mod-b" style="font-size: 14px; line-height: 1.6;">
             ¿Eliminar el servicio <strong>{{ confId }}</strong>? Esta acción no se puede deshacer.
           </div>
-          <div style="display: flex; gap: 8px; justify-content: flex-end;">
-            <button class="m-btn" (click)="confId = null">Cancelar</button>
-            <button class="m-btn m-btn-dan" (click)="deleteConfirmed()">Eliminar</button>
+          <div class="mod-f">
+            <span></span>
+            <div style="display: flex; gap: 8px;">
+              <button (click)="confId = null">Cancelar</button>
+              <button class="pri dgr" (click)="deleteConfirmed()">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import Preview Modal -->
+      <div *ngIf="modal === 'import'" class="ov" (click)="closeOnOverlay($event)">
+        <div class="mod">
+          <div class="mod-h">
+            <div>
+              <b>Importar servicios</b>
+              <span class="s">Revisión antes de escribir</span>
+            </div>
+            <button class="x" (click)="closeModal()">×</button>
+          </div>
+          <div class="mod-b">
+            <div style="background:#F8FAFC;border-radius:9px;padding:11px 13px;margin-bottom:14px;font-size:13px">
+              <b>Archivo subido</b>
+              <div class="mut" style="font-size:12px;margin-top:2px">{{ importRows.length }} filas leídas</div>
+            </div>
+            
+            <div class="grid g3" style="margin-bottom:14px">
+              <div style="background:var(--greenL);border-radius:9px;padding:11px 13px">
+                <div style="font-size:22px;font-weight:800;color:var(--greenD)">{{ getImportStats().ok }}</div>
+                <div style="font-size:12px;color:var(--greenD);font-weight:600">listas para importar</div>
+              </div>
+              <div style="background:var(--orangeL);border-radius:9px;padding:11px 13px">
+                <div style="font-size:22px;font-weight:800;color:var(--orangeD)">{{ getImportStats().warn }}</div>
+                <div style="font-size:12px;color:var(--orangeD);font-weight:600">con advertencias</div>
+              </div>
+              <div style="background:var(--redL);border-radius:9px;padding:11px 13px">
+                <div style="font-size:22px;font-weight:800;color:var(--redD)">{{ getImportStats().err }}</div>
+                <div style="font-size:12px;color:var(--redD);font-weight:600">con errores</div>
+              </div>
+            </div>
+
+            <div style="border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:14px;max-height:200px;overflow-y:auto">
+              <div *ngFor="let row of importRows; let i = index" style="padding:9px 12px; border-bottom:1px solid var(--line2)">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span class="dot" [style.background]="getImportRowColor(row).bg" [style.color]="getImportRowColor(row).fg" style="width:19px;height:19px;font-size:10px">{{ getImportRowColor(row).icon }}</span>
+                  <span class="mut" style="font-size:11px;width:32px">F{{i+2}}</span>
+                  <span style="font-size:13px;width:70px;font-weight:600">{{ row.id || '—' }}</span>
+                  <span class="mut" style="font-size:12px;flex:1">{{ row.cliente || '—' }}</span>
+                  <span style="font-size:12px">{{ row.valor ? cop(row.valor) : 'US$ 0' }}</span>
+                </div>
+                <div *ngIf="row.err" style="font-size:11px; margin:4px 0 0 44px" [style.color]="getImportRowColor(row).fg">{{ row.err }}</div>
+              </div>
+            </div>
+
+            <div style="background:#F8FAFC;border-radius:9px;padding:12px 14px;margin-bottom:8px">
+              <div style="font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;margin-bottom:9px">Si la OV ya existe</div>
+              <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:400;font-size:13px;margin-bottom:7px;color:var(--txt)">
+                <input type="radio" name="dp" [value]="false" [(ngModel)]="importOverwrite" style="width:auto"> Omitir y conservar lo registrado
+              </label>
+              <label style="display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-weight:400;font-size:13px;color:var(--txt)">
+                <input type="radio" name="dp" [value]="true" [(ngModel)]="importOverwrite" style="width:auto"> Actualizar con lo que venga del Excel
+              </label>
+            </div>
+          </div>
+          <div class="mod-f">
+            <span></span>
+            <div style="display:flex;gap:8px">
+              <button (click)="closeModal()">Cancelar</button>
+              <button class="pri" [disabled]="getImportStats().ok + getImportStats().warn === 0" (click)="commitImport()">Importar {{ getImportStats().ok + getImportStats().warn }} filas</button>
+            </div>
           </div>
         </div>
       </div>
@@ -283,22 +293,25 @@ import { DbService, Servicio } from '../../services/db.service';
 export class ServiciosComponent {
   private dbService = inject(DbService);
 
-  // States (Signals for full reactivity)
+  TC = 3.37;
+  
   q = signal('');
   fE = signal('');
   fT = signal('');
   
-  modal: 'f' | null = null;
+  modal: 'f' | 'import' | null = null;
   form: Partial<Servicio> = {};
   confId: string | null = null;
+  err: string = '';
 
-  // Constants
+  importRows: any[] = [];
+  importOverwrite: boolean = true;
+
   VEND = ["Carlos Ruiz", "Ana Martínez", "Pedro Gómez"];
 
   tecnicos = computed(() => this.dbService.tecnicos());
   clientesList = computed(() => this.dbService.clientes().map(c => c.nombre));
 
-  // Filtered rows (Tracks changes in q(), fE(), and fT())
   rows = computed(() => {
     const query = this.q().toLowerCase();
     const estado = this.fE();
@@ -310,23 +323,54 @@ export class ServiciosComponent {
       const matchesEstado = !estado || x.estado === estado;
       const matchesTipo = !tipo || x.tipo === tipo;
       
-      return matchesSearch && (!estado || x.estado === estado) && (!tipo || x.tipo === tipo);
+      return matchesSearch && matchesEstado && matchesTipo;
     });
   });
 
+  totalRowsVal() {
+    const sum = this.rows().reduce((a, b) => a + (Number(b.valor) || 0), 0);
+    return this.cop(sum);
+  }
+
+  cop(n: number | null | undefined): string {
+    if (n == null || isNaN(n)) return '—';
+    const usd = n / this.TC;
+    return 'US$ ' + usd.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  dd(a: string | undefined, b: string | undefined): number | null {
+    if (!a || !b) return null;
+    return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
+  }
+
+  tipoP(t: string): string {
+    const m: any = { 'Preventivo': 'p-b', 'Correctivo': 'p-o', 'Emergencia': 'p-r' };
+    return m[t] || 'p-n';
+  }
+
+  pill(e: string): string {
+    const m: any = {
+      'Finalizado': 'p-g', 'En progreso': 'p-b', 'En riesgo': 'p-r', 'Programado': 'p-n',
+      'Pendiente': 'p-o', 'En curso': 'p-b', 'Entregado': 'p-g', 'Utilizado': 'p-g',
+      'Instalado': 'p-g', 'En pedido': 'p-o'
+    };
+    return m[e] || 'p-n';
+  }
+
   openNew() {
+    this.err = '';
     this.form = {
-      id: this.nid(this.dbService.servicios(), 'OV'),
+      id: '',
       oc: '',
-      cliente: this.clientesList().length > 0 ? this.clientesList()[0] : '',
-      vendedor: this.VEND[0],
+      cliente: '',
+      vendedor: '',
       tipo: 'Preventivo',
-      estado: 'En progreso',
+      estado: 'Programado',
       desc: '',
       ot: '',
       unidad: '',
       cc: '',
-      lugar: '',
+      lugar: 'Industria',
       fp: '',
       ff: '',
       tecnico: '',
@@ -334,32 +378,37 @@ export class ServiciosComponent {
       hhe: 0,
       valor: 0,
       costo: 0,
+      ubp: null,
       ubr: null
     };
     this.modal = 'f';
   }
 
   openEdit(s: Servicio) {
+    this.err = '';
     this.form = { ...s };
     this.modal = 'f';
   }
 
   closeModal() {
     this.modal = null;
+    this.err = '';
   }
 
   closeOnOverlay(event: MouseEvent) {
-    if (event.target === event.currentTarget) {
+    if ((event.target as HTMLElement).classList.contains('ov')) {
       this.closeModal();
+      if (this.confId) {
+        this.confId = null;
+      }
     }
   }
 
-  isFormValid(): boolean {
-    return !!(this.form.id && this.form.cliente && this.form.desc);
-  }
-
   async save() {
-    if (!this.isFormValid()) return;
+    this.err = '';
+    if (!this.form.id?.trim()) { this.err = 'El número de OV es obligatorio'; return; }
+    if (!this.form.cliente) { this.err = 'Selecciona el cliente'; return; }
+    if (this.form.ubp == null || String(this.form.ubp).trim() === '') { this.err = 'Ingresa la UB proyectada'; return; }
     
     const finalItem: Servicio = {
       id: this.form.id!,
@@ -368,7 +417,7 @@ export class ServiciosComponent {
       vendedor: this.form.vendedor || '',
       tipo: (this.form.tipo as any) || 'Preventivo',
       estado: (this.form.estado as any) || 'En progreso',
-      desc: this.form.desc!,
+      desc: this.form.desc || '',
       ot: this.form.ot || '',
       unidad: this.form.unidad || '',
       cc: this.form.cc || '',
@@ -380,7 +429,7 @@ export class ServiciosComponent {
       hhe: Number(this.form.hhe) || 0,
       valor: Number(this.form.valor) || 0,
       costo: Number(this.form.costo) || 0,
-      ubp: this.calculateUB(Number(this.form.valor) || 0, Number(this.form.costo) || 0),
+      ubp: Number(this.form.ubp),
       ubr: this.form.ubr !== null && this.form.ubr !== undefined && String(this.form.ubr) !== '' ? Number(this.form.ubr) : null,
       creado: this.form.creado || new Date().toISOString().slice(0, 10)
     };
@@ -400,72 +449,178 @@ export class ServiciosComponent {
     }
   }
 
-  // Calculation helpers
-  calculateUB(valor: number, costo: number): number | null {
-    if (valor && costo && valor > 0) {
-      return Math.round(((valor - costo) / valor) * 1000) / 10;
-    }
-    return null;
+  // --- EXCEL LOGIC ---
+  exportExcel() {
+    const data = this.rows().map(s => ({
+      'OV': s.id,
+      'Cliente': s.cliente,
+      'OC': s.oc,
+      'Descripción': s.desc,
+      'Tipo': s.tipo,
+      'Valor OV (PEN)': s.valor,
+      'Vendedor': s.vendedor,
+      'OT': s.ot,
+      'Lugar': s.lugar,
+      'F.Prog': s.fp,
+      'F.Fin': s.ff,
+      'Días': this.dd(s.fp, s.ff),
+      'H.H Prog': s.hhp,
+      'H.H Ejec': s.hhe,
+      'UB Proy %': s.ubp,
+      'UB Real %': s.ubr,
+      'Estado': s.estado,
+      'Técnico': s.tecnico
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Servicios');
+    
+    // Add KPIs sheet
+    const kpiData = [{ KPI: 'Exportado el', Valor: new Date().toLocaleDateString() }];
+    const wsKpi = XLSX.utils.json_to_sheet(kpiData);
+    XLSX.utils.book_append_sheet(wb, wsKpi, 'Resumen KPI');
+
+    XLSX.writeFile(wb, 'Servicios_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   }
 
-  getProjectedUB(): string {
-    const val = Number(this.form.valor) || 0;
-    const cost = Number(this.form.costo) || 0;
-    const ub = this.calculateUB(val, cost);
-    return ub !== null ? `${ub}%` : '—';
+  downloadTemplate() {
+    const data = [{
+      'OV': 'OV-EXAMPLE',
+      'Cliente': 'Nestlé SA',
+      'OC': '12345',
+      'Descripción': 'Ejemplo de servicio',
+      'Tipo': 'Preventivo',
+      'Valor OV (PEN)': 5000,
+      'Vendedor': 'Carlos Ruiz',
+      'OT': 'OT-001',
+      'Lugar': 'Industria',
+      'F.Prog': '2026-06-01',
+      'F.Fin': '2026-06-05',
+      'H.H Prog': 40,
+      'H.H Ejec': 40,
+      'UB Proy %': 45,
+      'UB Real %': 48,
+      'Estado': 'Finalizado',
+      'Técnico': 'Edwin Zarate Escobar'
+    }];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+    XLSX.writeFile(wb, 'Plantilla_Servicios.xlsx');
   }
 
-  getProjectedUBColorBg(): string {
-    const val = Number(this.form.valor) || 0;
-    const cost = Number(this.form.costo) || 0;
-    const ub = this.calculateUB(val, cost);
-    if (ub === null) return 'var(--surf)';
-    return ub >= 36 ? 'var(--green-l)' : 'var(--red-l)';
+  triggerImport() {
+    document.getElementById('import-file')?.click();
   }
 
-  getProjectedUBColorText(): string {
-    const val = Number(this.form.valor) || 0;
-    const cost = Number(this.form.costo) || 0;
-    const ub = this.calculateUB(val, cost);
-    if (ub === null) return 'var(--txt-m)';
-    return ub >= 36 ? 'var(--green-d)' : 'var(--red-d)';
-  }
+  importExcel(event: any) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-  // Utilities
-  cop(n: number | null): string {
-    return n == null ? '—' : 'S/ ' + Math.round(n).toLocaleString('es-PE');
-  }
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      const bstr = e.target.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+      
+      this.importRows = data.map((row: any) => {
+        const id = String(row['OV'] || '').trim();
+        let err = '';
+        let level = 'ok';
+        
+        if (!id) {
+          err = 'Falta el número de OV. Columna obligatoria.';
+          level = 'err';
+        } else if (!row['Cliente']) {
+          err = 'Falta el Cliente.';
+          level = 'err';
+        } else if (isNaN(Number(row['Valor OV (PEN)']))) {
+          err = 'Valor OV no es numérico.';
+          level = 'err';
+        } else if (!row['Valor OV (PEN)']) {
+          err = 'Valor OV en cero o vacío.';
+          level = 'warn';
+        } else if (this.dbService.servicios().some(s => s.id === id)) {
+          err = 'La OV ya existe en el sistema.';
+          level = 'warn';
+        }
 
-  dd(a: string | undefined, b: string | undefined): number | null {
-    if (!a || !b) return null;
-    return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
-  }
+        return {
+          id: id,
+          cliente: row['Cliente'],
+          valor: row['Valor OV (PEN)'],
+          raw: row,
+          err: err,
+          level: level
+        };
+      });
 
-  nid(list: any[], pfx: string): string {
-    const nextNum = list.reduce((m, x) => {
-      const match = x.id?.replace(pfx + '-', '');
-      const val = parseInt(match || '0') || 0;
-      return Math.max(m, val);
-    }, 0) + 1;
-    return `${pfx}-${String(nextNum).padStart(4, '0')}`;
-  }
-
-  getTipoColor(tipo: string): string {
-    if (tipo === 'Preventivo') return 'var(--blue)';
-    if (tipo === 'Correctivo') return 'var(--amber)';
-    return 'var(--red)';
-  }
-
-  getEstadoStyle(estado: string): { bg: string, fg: string } {
-    const styles: Record<string, { bg: string, fg: string }> = {
-      'Finalizado': { bg: 'var(--green-l)', fg: 'var(--green-d)' },
-      'En progreso': { bg: 'var(--blue-l)', fg: 'var(--blue-d)' },
-      'En riesgo': { bg: 'var(--red-l)', fg: 'var(--red-d)' },
-      'Programado': { bg: 'var(--gray-l)', fg: 'var(--gray-d)' }
+      this.modal = 'import';
+      event.target.value = ''; // Reset
     };
-    return styles[estado] || { bg: 'var(--gray-l)', fg: 'var(--gray-d)' };
+    reader.readAsBinaryString(file);
   }
 
-  mathMin(a: number, b: number): number { return Math.min(a, b); }
-  mathRound(n: number): number { return Math.round(n); }
+  getImportStats() {
+    return {
+      ok: this.importRows.filter(r => r.level === 'ok').length,
+      warn: this.importRows.filter(r => r.level === 'warn').length,
+      err: this.importRows.filter(r => r.level === 'err').length
+    };
+  }
+
+  getImportRowColor(row: any) {
+    if (row.level === 'err') return { bg: 'var(--red-l)', fg: 'var(--red-d)', icon: '✗' };
+    if (row.level === 'warn') return { bg: 'var(--amber-l)', fg: 'var(--amber-d)', icon: '!' };
+    return { bg: 'var(--green-l)', fg: 'var(--green-d)', icon: '✓' };
+  }
+
+  async commitImport() {
+    const toImport = this.importRows.filter(r => r.level !== 'err');
+    for (let r of toImport) {
+      if (r.level === 'warn' && r.err === 'La OV ya existe en el sistema.' && !this.importOverwrite) {
+        continue;
+      }
+      const raw = r.raw;
+      const s: Servicio = {
+        id: r.id,
+        cliente: raw['Cliente'],
+        oc: raw['OC'] || '',
+        desc: raw['Descripción'] || '',
+        tipo: raw['Tipo'] || 'Preventivo',
+        valor: Number(raw['Valor OV (PEN)']) || 0,
+        costo: 0, // A ser llenado luego o usar formula
+        vendedor: raw['Vendedor'] || '',
+        ot: raw['OT'] || '',
+        unidad: '',
+        cc: '',
+        lugar: raw['Lugar'] || 'Industria',
+        fp: this.formatExcelDate(raw['F.Prog']),
+        ff: this.formatExcelDate(raw['F.Fin']),
+        tecnico: raw['Técnico'] || '',
+        hhp: Number(raw['H.H Prog']) || 0,
+        hhe: Number(raw['H.H Ejec']) || 0,
+        ubp: Number(raw['UB Proy %']) || 0,
+        ubr: raw['UB Real %'] ? Number(raw['UB Real %']) : null,
+        estado: raw['Estado'] || 'Programado',
+        creado: new Date().toISOString().slice(0, 10)
+      };
+      await this.dbService.upsert('servicios', s);
+    }
+    this.closeModal();
+  }
+  
+  formatExcelDate(v: any): string {
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') {
+      const d = new Date((v - (25567 + 2)) * 86400 * 1000);
+      return d.toISOString().slice(0, 10);
+    }
+    return '';
+  }
 }
+

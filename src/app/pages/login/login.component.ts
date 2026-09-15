@@ -12,14 +12,7 @@ import { AuthService } from '../../services/auth.service';
       <div class="login-card">
         <!-- Logo -->
         <div class="logo-container">
-          <svg viewBox="0 0 200 200" width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-            <g stroke-width="24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <!-- Left Green part of M -->
-              <path d="M 100,100 L 40,40 C 20,20 20,180 40,160 L 100,100" stroke="#8BC34A" />
-              <!-- Right Orange part of M -->
-              <path d="M 100,100 L 160,40 C 180,20 180,180 160,160 L 100,100" stroke="#F57C00" />
-            </g>
-          </svg>
+          <img src="/assets/images/logo.jpeg" alt="Logo Movitécnica" style="max-width: 150px; max-height: 120px; object-fit: contain;">
         </div>
         
         <h2 class="login-title">Iniciar Sesión</h2>

@@ -30,16 +30,11 @@ import * as XLSX from 'xlsx';
         <input id="s-q" placeholder="Buscar OV, cliente, OT..." style="width:230px" [ngModel]="q()" (ngModelChange)="q.set($event)">
         <select id="s-e" [ngModel]="fE()" (ngModelChange)="fE.set($event)">
           <option value="">Todos los estados</option>
-          <option value="Programado">Programado</option>
-          <option value="En progreso">En progreso</option>
-          <option value="Finalizado">Finalizado</option>
-          <option value="En riesgo">En riesgo</option>
+          <option *ngFor="let e of estadosServicio()" [value]="e">{{ e }}</option>
         </select>
         <select id="s-t" [ngModel]="fT()" (ngModelChange)="fT.set($event)">
           <option value="">Todos los tipos</option>
-          <option value="Preventivo">Preventivo</option>
-          <option value="Correctivo">Correctivo</option>
-          <option value="Emergencia">Emergencia</option>
+          <option *ngFor="let t of tiposServicio()" [value]="t">{{ t }}</option>
         </select>
         <span class="right">{{ rows().length }} registros · {{ totalRowsVal() }}</span>
       </div>
@@ -134,24 +129,19 @@ import * as XLSX from 'xlsx';
               <div class="fld">
                 <label>Vendedor</label>
                 <select [(ngModel)]="form.vendedor">
-                  <option *ngFor="let v of VEND" [value]="v">{{ v }}</option>
+                  <option *ngFor="let v of vendedores()" [value]="v">{{ v }}</option>
                 </select>
               </div>
               <div class="fld">
                 <label>Tipo</label>
                 <select [(ngModel)]="form.tipo">
-                  <option value="Preventivo">Preventivo</option>
-                  <option value="Correctivo">Correctivo</option>
-                  <option value="Emergencia">Emergencia</option>
+                  <option *ngFor="let t of tiposServicio()" [value]="t">{{ t }}</option>
                 </select>
               </div>
               <div class="fld">
                 <label>Estado</label>
                 <select [(ngModel)]="form.estado">
-                  <option value="Programado">Programado</option>
-                  <option value="En progreso">En progreso</option>
-                  <option value="Finalizado">Finalizado</option>
-                  <option value="En riesgo">En riesgo</option>
+                  <option *ngFor="let e of estadosServicio()" [value]="e">{{ e }}</option>
                 </select>
               </div>
             </div>
@@ -166,10 +156,7 @@ import * as XLSX from 'xlsx';
               <div class="fld">
                 <label>Lugar</label>
                 <select [(ngModel)]="form.lugar">
-                  <option value="Mina">Mina</option>
-                  <option value="Industria">Industria</option>
-                  <option value="Taller">Taller</option>
-                  <option value="Planta cliente">Planta cliente</option>
+                  <option *ngFor="let l of lugares()" [value]="l">{{ l }}</option>
                 </select>
               </div>
               <div class="fld">
@@ -307,6 +294,10 @@ export class ServiciosComponent {
   importRows: any[] = [];
   importOverwrite: boolean = true;
 
+  vendedores = computed(() => this.dbService.getCatalogValues('vendedor'));
+  tiposServicio = computed(() => this.dbService.getCatalogValues('tipo_servicio'));
+  estadosServicio = computed(() => this.dbService.getCatalogValues('estado_servicio'));
+  lugares = computed(() => this.dbService.getCatalogValues('lugar'));
   VEND = ["Carlos Ruiz", "Ana Martínez", "Pedro Gómez"];
 
   tecnicos = computed(() => this.dbService.tecnicos());

@@ -137,6 +137,28 @@ export interface Repuesto {
   estado: 'Instalado' | 'En pedido';
 }
 
+export interface CatalogoItem {
+  id: string;
+  tipo: string;
+  valor: string;
+  descripcion?: string | null;
+  orden?: number;
+  activo?: boolean;
+  creado?: string;
+}
+
+export const CATALOGOS_DEFAULT: Record<string, string[]> = {
+  vendedor: ['Carlos Ruiz', 'Ana Martínez', 'Pedro Gómez'],
+  especialidad: ['Técnico mecánico', 'Técnico electricista', 'Técnico especialista', 'Supervisor de campo', 'Técnico electromecánico'],
+  eps: ['EsSalud', 'Rímac EPS', 'Pacífico EPS', 'Sanitas Perú', 'Mapfre EPS'],
+  sctr: ['Rímac Seguros', 'Pacífico Seguros', 'Mapfre Perú', 'La Positiva'],
+  lugar: ['Mina', 'Industria', 'Taller', 'Planta cliente'],
+  tipo_servicio: ['Preventivo', 'Correctivo', 'Emergencia'],
+  estado_servicio: ['Programado', 'En progreso', 'Finalizado', 'En riesgo'],
+  contrato: ['Indefinido', 'Plazo fijo', 'Locación de servicios', 'Obra determinada'],
+  nivel: ['Junior (0–2 años)', 'Técnico (2–5 años)', 'Senior (5–10 años)', 'Experto (+10 años)']
+};
+
 const REQ_BASE_DEFAULT: BaseRequirement[] = [
   { nombre:"Contrato firmado",  vence:"2026-12-31", estado:"vigente" },
   { nombre:"EMO",               vence:"2027-03-15", estado:"vigente" },
@@ -252,6 +274,7 @@ export class DbService {
   public viaticos = signal<Viatico[]>([]);
   public insumos = signal<Insumo[]>([]);
   public repuestos = signal<Repuesto[]>([]);
+  public catalogos = signal<CatalogoItem[]>([]);
 
   constructor() {
     this.init();
@@ -260,7 +283,7 @@ export class DbService {
   private async init() {
     console.log("[DbService] Initializing - Fetching from Supabase...");
     try {
-      const [sRes, tRes, cRes, pRes, eRes, vRes, iRes, rRes] = await Promise.all([
+      const [sRes, tRes, cRes, pRes, eRes, vRes, iRes, rRes, catRes] = await Promise.all([
         this.supabase.from('servicios').select('*'),
         this.supabase.from('tecnicos').select('*'),
         this.supabase.from('clientes').select('*'),
@@ -269,6 +292,7 @@ export class DbService {
         this.supabase.from('viaticos').select('*'),
         this.supabase.from('insumos').select('*'),
         this.supabase.from('repuestos').select('*'),
+        this.supabase.from('catalogos').select('*').order('orden', { ascending: true }),
       ]);
 
       console.log("[DbService] Fetch results:", {
@@ -331,6 +355,7 @@ export class DbService {
       if (vRes.data) this.viaticos.set(vRes.data as Viatico[]);
       if (iRes.data) this.insumos.set(iRes.data as Insumo[]);
       if (rRes.data) this.repuestos.set(rRes.data as Repuesto[]);
+      if (catRes.data) this.catalogos.set(catRes.data as CatalogoItem[]);
       
       console.log("[DbService] Initialization complete. Signals set.");
     } catch (err) {
@@ -386,6 +411,7 @@ export class DbService {
       case 'viaticos': this.viaticos.set(data); break;
       case 'insumos': this.insumos.set(data); break;
       case 'repuestos': this.repuestos.set(data); break;
+      case 'catalogos': this.catalogos.set(data); break;
     }
   }
 
@@ -399,6 +425,7 @@ export class DbService {
       case 'viaticos': return this.viaticos();
       case 'insumos': return this.insumos();
       case 'repuestos': return this.repuestos();
+      case 'catalogos': return this.catalogos();
       default: return [];
     }
   }
@@ -511,4 +538,13 @@ export class DbService {
   public getBaseDefaultReqs(): BaseRequirement[] {
     return REQ_BASE_DEFAULT.map(r => ({ ...r }));
   }
+
+  public getCatalogValues(tipo: string): string[] {
+    const items = this.catalogos().filter(c => c.tipo === tipo && c.activo !== false);
+    if (items.length > 0) {
+      return items.map(i => i.valor);
+    }
+    return CATALOGOS_DEFAULT[tipo] || [];
+  }
 }
+

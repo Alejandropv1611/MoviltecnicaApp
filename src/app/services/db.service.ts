@@ -55,9 +55,12 @@ export interface Planificacion {
   id: string;
   tecnico_id: string;
   fecha: string;
+  fecha_fin?: string;
+  cliente?: string;
   tipo: string;
-  descripcion: string;
-  creado: string;
+  ov?: string;
+  descripcion?: string;
+  creado?: string;
 }
 
 export interface Servicio {

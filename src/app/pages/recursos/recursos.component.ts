@@ -36,10 +36,26 @@ import { DbService, SolicEpp, EppItem, Viatico, Insumo, Repuesto } from '../../s
 
       <!-- Filter Bar -->
       <div class="bar">
-        <select style="width: 180px;" [ngModel]="fOV()" (ngModelChange)="fOV.set($event)">
-          <option value="">Todas las OV</option>
-          <option *ngFor="let ov of ovOptsNoBlank()" [value]="ov">{{ ov }}</option>
-        </select>
+        <div style="position: relative; display: flex; align-items: center;">
+          <input 
+            type="text" 
+            [ngModel]="fOV()" 
+            (ngModelChange)="fOV.set($event)" 
+            placeholder="Escribir o seleccionar OV..." 
+            list="ov-list"
+            style="width: 230px; padding-right: 26px;"
+          />
+          <button *ngIf="fOV()" 
+                  type="button"
+                  (click)="fOV.set('')" 
+                  title="Limpiar filtro"
+                  style="position: absolute; right: 6px; background: none; border: none; padding: 0 4px; font-size: 13px; color: var(--mut); cursor: pointer; line-height: 1;">
+            ✕
+          </button>
+        </div>
+        <datalist id="ov-list">
+          <option *ngFor="let ov of allAvailableOVs()" [value]="ov">{{ ov }}</option>
+        </datalist>
         <span class="right">Total: <b>{{ usd(totalSum()) }}</b></span>
       </div>
 
@@ -610,29 +626,64 @@ export class RecursosComponent {
   genericForm: any = {};
 
   // Setup Options
-  ovOpts = computed(() => ['', ...this.dbService.servicios().map(x => x.id)]);
-  ovOptsNoBlank = computed(() => this.dbService.servicios().map(x => x.id));
+  allAvailableOVs = computed(() => {
+    const set = new Set<string>();
+    this.dbService.servicios().forEach(x => { if (x.id && x.id.trim()) set.add(x.id.trim()); });
+    this.dbService.solicEpp().forEach(x => { if (x.ov && x.ov.trim()) set.add(x.ov.trim()); });
+    this.dbService.viaticos().forEach(x => { if (x.ov && x.ov.trim()) set.add(x.ov.trim()); });
+    this.dbService.insumos().forEach(x => { if (x.ov && x.ov.trim()) set.add(x.ov.trim()); });
+    this.dbService.repuestos().forEach(x => { if (x.ov && x.ov.trim()) set.add(rClean(x.ov)); });
+    function rClean(v: string) { return v ? v.trim() : ''; }
+    return Array.from(set).filter(Boolean).sort();
+  });
+
+  ovOpts = computed(() => ['', ...this.allAvailableOVs()]);
+  ovOptsNoBlank = computed(() => this.allAvailableOVs());
   tOptsNoBlank = computed(() => this.dbService.tecnicos().map(x => x.nombre));
 
   // Rows and totals computations
   eppRows = computed(() => {
-    const ov = this.fOV();
-    return this.dbService.solicEpp().filter(x => !ov || x.ov === ov);
+    const q = this.fOV().trim().toLowerCase();
+    if (!q) return this.dbService.solicEpp();
+    return this.dbService.solicEpp().filter(x => 
+      (x.ov && x.ov.toLowerCase().includes(q)) ||
+      (x.id && x.id.toLowerCase().includes(q)) ||
+      (x.tecnico && x.tecnico.toLowerCase().includes(q))
+    );
   });
 
   viaticosRows = computed(() => {
-    const ov = this.fOV();
-    return this.dbService.viaticos().filter(x => !ov || x.ov === ov);
+    const q = this.fOV().trim().toLowerCase();
+    if (!q) return this.dbService.viaticos();
+    return this.dbService.viaticos().filter(x => 
+      (x.ov && x.ov.toLowerCase().includes(q)) ||
+      (x.id && x.id.toLowerCase().includes(q)) ||
+      (x.tecnico && x.tecnico.toLowerCase().includes(q)) ||
+      (x.concepto && x.concepto.toLowerCase().includes(q))
+    );
   });
 
   insumosRows = computed(() => {
-    const ov = this.fOV();
-    return this.dbService.insumos().filter(x => !ov || x.ov === ov);
+    const q = this.fOV().trim().toLowerCase();
+    if (!q) return this.dbService.insumos();
+    return this.dbService.insumos().filter(x => 
+      (x.ov && x.ov.toLowerCase().includes(q)) ||
+      (x.id && x.id.toLowerCase().includes(q)) ||
+      (x.insumo && x.insumo.toLowerCase().includes(q)) ||
+      (x.proveedor && x.proveedor.toLowerCase().includes(q))
+    );
   });
 
   repuestosRows = computed(() => {
-    const ov = this.fOV();
-    return this.dbService.repuestos().filter(x => !ov || x.ov === ov);
+    const q = this.fOV().trim().toLowerCase();
+    if (!q) return this.dbService.repuestos();
+    return this.dbService.repuestos().filter(x => 
+      (x.ov && x.ov.toLowerCase().includes(q)) ||
+      (x.id && x.id.toLowerCase().includes(q)) ||
+      (x.ref && x.ref.toLowerCase().includes(q)) ||
+      (x.desc && x.desc.toLowerCase().includes(q)) ||
+      (x.proveedor && x.proveedor.toLowerCase().includes(q))
+    );
   });
 
   totalSum = computed(() => {

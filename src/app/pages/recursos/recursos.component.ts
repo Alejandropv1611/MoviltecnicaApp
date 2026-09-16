@@ -628,7 +628,10 @@ export class RecursosComponent {
   // Setup Options
   allAvailableOVs = computed(() => {
     const set = new Set<string>();
-    this.dbService.servicios().forEach(x => { if (x.id && x.id.trim()) set.add(x.id.trim()); });
+    this.dbService.servicios().forEach(x => {
+      const val = (x.ov || (x.id.includes('_') ? x.id.split('_')[0] : x.id) || '').trim();
+      if (val) set.add(val);
+    });
     this.dbService.solicEpp().forEach(x => { if (x.ov && x.ov.trim()) set.add(x.ov.trim()); });
     this.dbService.viaticos().forEach(x => { if (x.ov && x.ov.trim()) set.add(x.ov.trim()); });
     this.dbService.insumos().forEach(x => { if (x.ov && x.ov.trim()) set.add(x.ov.trim()); });

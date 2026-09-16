@@ -45,6 +45,7 @@ import * as XLSX from 'xlsx';
             <thead>
               <tr>
                 <th>OV</th>
+                <th>OT</th>
                 <th>Cliente</th>
                 <th>OC</th>
                 <th class="c">Tipo</th>
@@ -62,7 +63,8 @@ import * as XLSX from 'xlsx';
             </thead>
             <tbody>
               <tr *ngFor="let s of rows()">
-                <td class="id">{{ s.id }}</td>
+                <td class="id">{{ s.ov || s.id }}</td>
+                <td class="mut">{{ s.ot || '—' }}</td>
                 <td>{{ s.cliente }}</td>
                 <td class="mut">{{ s.oc || '—' }}</td>
                 <td class="c"><span class="p" [ngClass]="tipoP(s.tipo)">{{ s.tipo }}</span></td>
@@ -97,7 +99,7 @@ import * as XLSX from 'xlsx';
                 </td>
               </tr>
               <tr *ngIf="rows().length === 0">
-                <td colspan="14" class="empty">No hay servicios con ese filtro</td>
+                <td colspan="15" class="empty">No hay servicios con ese filtro</td>
               </tr>
             </tbody>
           </table>
@@ -110,14 +112,14 @@ import * as XLSX from 'xlsx';
         <div class="mod">
           <div class="mod-h">
             <div>
-              <b>{{ form.creado ? 'Editar OV ' + form.id : 'Nueva orden de servicio' }}</b>
+              <b>{{ form.creado ? 'Editar OV ' + (form.ov || form.id) : 'Nueva orden de servicio' }}</b>
               <span class="s">Los desplegables salen de Catálogos</span>
             </div>
             <button class="x" (click)="closeModal()">×</button>
           </div>
           <div class="mod-b">
             <div class="row2">
-              <div class="fld"><label>OV *</label><input [(ngModel)]="form.id"/></div>
+              <div class="fld"><label>OV *</label><input [(ngModel)]="form.ov"/></div>
               <div class="fld"><label>OC *</label><input [(ngModel)]="form.oc"/></div>
               <div class="fld">
                 <label>Cliente *</label>
@@ -247,7 +249,8 @@ import * as XLSX from 'xlsx';
                 <div style="display:flex;align-items:center;gap:9px">
                   <span class="dot" [style.background]="getImportRowColor(row).bg" [style.color]="getImportRowColor(row).fg" style="width:19px;height:19px;font-size:10px">{{ getImportRowColor(row).icon }}</span>
                   <span class="mut" style="font-size:11px;width:32px">F{{i+2}}</span>
-                  <span style="font-size:13px;width:70px;font-weight:600">{{ row.id || '—' }}</span>
+                  <span style="font-size:13px;min-width:70px;font-weight:600">{{ row.ov || row.id || '—' }}</span>
+                  <span *ngIf="row.ot" class="mut" style="font-size:11px;padding:1px 6px;background:var(--line2);border-radius:4px;">OT: {{ row.ot }}</span>
                   <span class="mut" style="font-size:12px;flex:1">{{ row.cliente || '—' }}</span>
                   <span style="font-size:12px">{{ row.valor ? cop(row.valor) : 'US$ 0' }}</span>
                 </div>
@@ -310,7 +313,7 @@ export class ServiciosComponent {
     
     return this.dbService.servicios().filter(x => {
       const matchesSearch = !query || 
-        [x.id, x.cliente, x.desc, x.ot, x.lugar].join(' ').toLowerCase().includes(query);
+        [(x.ov || x.id), x.id, x.cliente, x.desc, x.ot, x.lugar].join(' ').toLowerCase().includes(query);
       const matchesEstado = !estado || x.estado === estado;
       const matchesTipo = !tipo || x.tipo === tipo;
       
@@ -352,6 +355,7 @@ export class ServiciosComponent {
     this.err = '';
     this.form = {
       id: '',
+      ov: '',
       oc: '',
       cliente: '',
       vendedor: '',
@@ -377,7 +381,7 @@ export class ServiciosComponent {
 
   openEdit(s: Servicio) {
     this.err = '';
-    this.form = { ...s };
+    this.form = { ...s, ov: s.ov || s.id };
     this.modal = 'f';
   }
 
@@ -397,19 +401,25 @@ export class ServiciosComponent {
 
   async save() {
     this.err = '';
-    if (!this.form.id?.trim()) { this.err = 'El número de OV es obligatorio'; return; }
+    const ovVal = (this.form.ov || this.form.id || '').trim();
+    const otVal = (this.form.ot || '').trim();
+    if (!ovVal) { this.err = 'El número de OV es obligatorio'; return; }
     if (!this.form.cliente) { this.err = 'Selecciona el cliente'; return; }
     if (this.form.ubp == null || String(this.form.ubp).trim() === '') { this.err = 'Ingresa la UB proyectada'; return; }
     
+    // Mantener el id existente si estamos editando, o generar un id determinístico si es nuevo
+    const idVal = this.form.id?.trim() || (otVal ? `${ovVal}_${otVal}` : ovVal);
+
     const finalItem: Servicio = {
-      id: this.form.id!,
+      id: idVal,
+      ov: ovVal,
       oc: this.form.oc || '',
       cliente: this.form.cliente!,
       vendedor: this.form.vendedor || '',
       tipo: (this.form.tipo as any) || 'Preventivo',
       estado: (this.form.estado as any) || 'En progreso',
       desc: this.form.desc || '',
-      ot: this.form.ot || '',
+      ot: otVal,
       unidad: this.form.unidad || '',
       cc: this.form.cc || '',
       lugar: this.form.lugar || '',
@@ -443,14 +453,14 @@ export class ServiciosComponent {
   // --- EXCEL LOGIC ---
   exportExcel() {
     const data = this.rows().map(s => ({
-      'OV': s.id,
+      'OV': s.ov || s.id,
+      'OT': s.ot,
       'Cliente': s.cliente,
       'OC': s.oc,
       'Descripción': s.desc,
       'Tipo': s.tipo,
       'Valor OV (PEN)': s.valor,
       'Vendedor': s.vendedor,
-      'OT': s.ot,
       'Lugar': s.lugar,
       'F.Prog': s.fp,
       'F.Fin': s.ff,
@@ -517,12 +527,16 @@ export class ServiciosComponent {
       const ws = wb.Sheets[wsname];
       const data = XLSX.utils.sheet_to_json(ws);
       
+      const existing = this.dbService.servicios();
+      const usedIdsInBatch = new Set<string>();
+
       this.importRows = data.map((row: any) => {
-        const id = String(row['OV'] || '').trim();
+        const ov = String(row['OV'] || '').trim();
+        const ot = String(row['OT'] || '').trim();
         let err = '';
         let level = 'ok';
         
-        if (!id) {
+        if (!ov) {
           err = 'Falta el número de OV. Columna obligatoria.';
           level = 'err';
         } else if (!row['Cliente']) {
@@ -534,13 +548,41 @@ export class ServiciosComponent {
         } else if (!row['Valor OV (PEN)']) {
           err = 'Valor OV en cero o vacío.';
           level = 'warn';
-        } else if (this.dbService.servicios().some(s => s.id === id)) {
-          err = 'La OV ya existe en el sistema.';
-          level = 'warn';
         }
 
+        // Determinar ID único:
+        // Si tiene OT, la clave primaria es OV_OT. Si no tiene OT, es OV.
+        let baseId = ot ? `${ov}_${ot}` : ov;
+        if (baseId.length > 45) {
+          baseId = baseId.slice(0, 45);
+        }
+
+        // Verificar si este servicio específico (misma OV y misma OT) ya existe en base de datos
+        const existingMatch = existing.find(s => 
+          s.id === baseId || 
+          ((s.ov === ov || s.id === ov) && (s.ot || '') === ot)
+        );
+
+        let finalId = baseId;
+        if (existingMatch) {
+          finalId = existingMatch.id;
+          if (!err) {
+            err = `El servicio (OV: ${ov}${ot ? ' · OT: ' + ot : ''}) ya existe en el sistema.`;
+            level = 'warn';
+          }
+        } else {
+          // Si no existe en DB, pero hay filas duplicadas con misma OV y misma OT en el mismo Excel:
+          let counter = 1;
+          while (usedIdsInBatch.has(finalId) || existing.some(s => s.id === finalId)) {
+            finalId = `${baseId}_${counter++}`;
+          }
+        }
+        usedIdsInBatch.add(finalId);
+
         return {
-          id: id,
+          id: finalId,
+          ov: ov,
+          ot: ot,
           cliente: row['Cliente'],
           valor: row['Valor OV (PEN)'],
           raw: row,
@@ -572,12 +614,13 @@ export class ServiciosComponent {
   async commitImport() {
     const toImport = this.importRows.filter(r => r.level !== 'err');
     for (let r of toImport) {
-      if (r.level === 'warn' && r.err === 'La OV ya existe en el sistema.' && !this.importOverwrite) {
+      if (r.level === 'warn' && r.err && r.err.includes('ya existe en el sistema') && !this.importOverwrite) {
         continue;
       }
       const raw = r.raw;
       const s: Servicio = {
         id: r.id,
+        ov: r.ov,
         cliente: raw['Cliente'],
         oc: raw['OC'] || '',
         desc: raw['Descripción'] || '',
@@ -585,7 +628,7 @@ export class ServiciosComponent {
         valor: Number(raw['Valor OV (PEN)']) || 0,
         costo: 0, // A ser llenado luego o usar formula
         vendedor: raw['Vendedor'] || '',
-        ot: raw['OT'] || '',
+        ot: r.ot || raw['OT'] || '',
         unidad: '',
         cc: '',
         lugar: raw['Lugar'] || 'Industria',

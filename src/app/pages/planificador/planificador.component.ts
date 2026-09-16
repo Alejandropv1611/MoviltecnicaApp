@@ -462,20 +462,22 @@ interface EnablementInfo {
       position: sticky;
       left: 0;
       background: #fff;
-      z-index: 2;
+      z-index: 10;
       width: 216px;
       min-width: 216px;
       border-right: 1px solid var(--line);
       padding: 9px 12px;
+      box-shadow: 2px 0 4px rgba(0,0,0,0.03);
     }
     .pl thead th {
       position: sticky;
       top: 0;
       background: #F8FAFC;
-      z-index: 3;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
     }
     .pl thead th.who {
-      z-index: 4;
+      z-index: 30;
       background: #F8FAFC;
     }
     .pl .d {
@@ -547,7 +549,7 @@ interface EnablementInfo {
       font-weight: 700;
       line-height: 1.25;
       overflow: hidden;
-      z-index: 10;
+      z-index: 2;
       cursor: pointer;
       display: flex;
       flex-direction: column;
@@ -560,6 +562,7 @@ interface EnablementInfo {
     .bar:hover {
       filter: brightness(0.96);
       transform: translateY(-1px);
+      z-index: 3;
     }
     .bar small {
       font-weight: 500;

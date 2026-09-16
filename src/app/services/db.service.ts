@@ -65,6 +65,7 @@ export interface Planificacion {
 
 export interface Servicio {
   id: string;
+  ov?: string;
   oc: string;
   cliente: string;
   desc: string;

@@ -112,7 +112,7 @@ interface KpiRow {
             </thead>
             <tbody>
               <tr *ngFor="let x of rows()">
-                <td class="id">{{ x.s.id }}</td>
+                <td class="id">{{ x.s.ov || x.s.id }}</td>
                 <td>{{ x.s.cliente }}</td>
                 <td class="mut">{{ x.s.ff }}</td>
                 <td class="c">{{ x.d !== null ? x.d + 'd' : '—' }}</td>

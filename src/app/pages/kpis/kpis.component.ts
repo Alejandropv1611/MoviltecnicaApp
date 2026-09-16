@@ -5,10 +5,10 @@ import { DbService, Servicio } from '../../services/db.service';
 
 interface KpiRow extends Servicio {
   dias: number | null;
-  hhP: number | null;
-  dOk: boolean;
-  uOk: boolean;
-  hOk: boolean;
+  hhOk: boolean;
+  diOk: boolean;
+  ubOk: boolean;
+  delta: number | null;
 }
 
 @Component({
@@ -17,173 +17,162 @@ interface KpiRow extends Servicio {
   imports: [CommonModule, FormsModule],
   template: `
     <div>
-      <!-- Page Header -->
-      <div class="m-page-header">
+      <div class="head">
         <div>
-          <h1 class="m-page-title">KPIs de gestión</h1>
-          <p class="m-page-subtitle">Indicadores clave de desempeño operacional</p>
+          <h1>KPIs de gestión</h1>
+          <div class="sub">Indicadores de la Unidad de Negocios de Servicios · medición mensual</div>
         </div>
+        <button (click)="kFicha.set(!kFicha())">{{ kFicha() ? 'Ocultar ficha' : 'Ver ficha del indicador' }}</button>
       </div>
 
-      <!-- Filters Row -->
-      <div style="display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;">
-        <label style="font-size: 13px; font-weight: 600; color: var(--txt-m);">Filtrar por mes de finalización:</label>
-        <select class="m-input" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set($event)" style="width: 200px;">
+      <div class="bar">
+        <label>Período de medición</label>
+        <select [ngModel]="kPer()" (ngModelChange)="kPer.set($event)" style="width:auto; min-width:145px">
           <option value="">Todos los meses</option>
-          <option *ngFor="let m of availableMonths()" [value]="m.value">{{ m.label }}</option>
+          <option *ngFor="let m of meses()" [value]="m.val">{{ m.lbl }}</option>
         </select>
-        <span style="margin-left: auto; font-size: 12px; color: var(--txt-m);">
-          {{ rows().length }} {{ rows().length === 1 ? 'servicio' : 'servicios' }}
-        </span>
+        <span class="chip">{{ rows().length }} OT ejecutadas en el cálculo</span>
+        <span class="right">{{ enMeta() }} de {{ medibles() }} indicadores en meta</span>
       </div>
 
-      <!-- KPI Widgets Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 18px;">
-        <!-- KPI 1: Tiempo de ejecución -->
-        <div class="m-card" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px;">
-          <div style="font-size: 11px; font-weight: 700; color: var(--txt-m); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-            Tiempo de ejecución ≤30 días
-          </div>
-          <div style="font-size: 38px; font-weight: 800; line-height: 1; margin-bottom: 4px;" 
-               [style.color]="ptD() >= 95 ? 'var(--green)' : (ptD() >= 95 * 0.9 ? 'var(--amber)' : 'var(--red)')">
-            {{ ptD() }}%
-          </div>
-          <div style="font-size: 11px; color: var(--txt-m); margin-bottom: 8px;">Meta: &ge;95%</div>
-          <div style="width: 100%; height: 7px; border-radius: 7px; background: var(--border); overflow: hidden; margin-bottom: 7px;">
-            <div style="height: 100%;" [style.width.%]="ptD()" [style.background]="ptD() >= 95 ? 'var(--green)' : (ptD() >= 85 ? 'var(--amber)' : 'var(--red)')"></div>
-          </div>
-          <div style="font-size: 11px; color: var(--txt-m); margin-top: 7px; margin-bottom: 6px;">
-            {{ timeDOkCount() }} de {{ rows().length }} servicios cumplen
-          </div>
-          <span class="m-pill" 
-                [style.background]="ptD() >= 95 ? 'var(--green-l)' : 'var(--red-l)'"
-                [style.color]="ptD() >= 95 ? 'var(--green-d)' : 'var(--red-d)'">
-            {{ ptD() >= 95 ? '✓ Cumpliendo meta' : '⚠ ' + (95 - ptD()) + 'pp bajo meta' }}
-          </span>
-        </div>
+      <div class="hint">
+        El denominador son las OT ejecutadas. {{ noEjecutadas() }} orden(es) registrada(s) no está(n) finalizada(s) y queda(n) fuera del cálculo.
+      </div>
 
-        <!-- KPI 2: Margen de Utilidad (UB Real) -->
-        <div class="m-card" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px;">
-          <div style="font-size: 11px; font-weight: 700; color: var(--txt-m); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-            UB Real ≥36%
+      <div class="card" *ngIf="kFicha()" style="margin-bottom:16px;padding:4px 18px">
+        <div *ngFor="let d of DEFS; let i = index" style="display:flex;gap:12px;padding:13px 0;" [style.border-bottom]="i < 2 ? '1px solid var(--line2)' : 'none'">
+          <span style="width:25px;height:25px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">{{ d.n }}</span>
+          <div>
+            <div style="font-size:13px;line-height:1.5">{{ d.obj }}</div>
+            <div style="font-size:12px;color:var(--mut);margin-top:5px;font-family:ui-monospace,monospace;line-height:1.5">{{ d.f }}</div>
+            <div style="font-size:12px;color:var(--mut2);margin-top:5px">Meta original {{ d.orig }}% · valor meta {{ d.meta }}% · mensual · responsable UNS</div>
           </div>
-          <div style="font-size: 38px; font-weight: 800; line-height: 1; margin-bottom: 4px;" 
-               [style.color]="ubAvg() >= 36 ? 'var(--green)' : (ubAvg() >= 36 * 0.9 ? 'var(--amber)' : 'var(--red)')">
-            {{ ubAvg() }}%
-          </div>
-          <div style="font-size: 11px; color: var(--txt-m); margin-bottom: 8px;">Meta: &ge;36%</div>
-          <div style="width: 100%; height: 7px; border-radius: 7px; background: var(--border); overflow: hidden; margin-bottom: 7px;">
-            <div style="height: 100%;" [style.width.%]="ubAvg()" [style.background]="ubAvg() >= 36 ? 'var(--green)' : (ubAvg() >= 32 ? 'var(--amber)' : 'var(--red)')"></div>
-          </div>
-          <div style="font-size: 11px; color: var(--txt-m); margin-top: 7px; margin-bottom: 6px;">
-            Promedio actual: {{ ubAvg() }}%
-          </div>
-          <span class="m-pill" 
-                [style.background]="ubAvg() >= 36 ? 'var(--green-l)' : 'var(--red-l)'"
-                [style.color]="ubAvg() >= 36 ? 'var(--green-d)' : 'var(--red-d)'">
-            {{ ubAvg() >= 36 ? '✓ Cumpliendo meta' : '⚠ ' + diffUB() + 'pp bajo meta' }}
-          </span>
-        </div>
-
-        <!-- KPI 3: Horas Hombre Ejecutadas -->
-        <div class="m-card" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 20px;">
-          <div style="font-size: 11px; font-weight: 700; color: var(--txt-m); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
-            H.H ejecutadas ≥95%
-          </div>
-          <div style="font-size: 38px; font-weight: 800; line-height: 1; margin-bottom: 4px;" 
-               [style.color]="hhT() >= 95 ? 'var(--green)' : (hhT() >= 95 * 0.9 ? 'var(--amber)' : 'var(--red)')">
-            {{ hhT() }}%
-          </div>
-          <div style="font-size: 11px; color: var(--txt-m); margin-bottom: 8px;">Meta: &ge;95%</div>
-          <div style="width: 100%; height: 7px; border-radius: 7px; background: var(--border); overflow: hidden; margin-bottom: 7px;">
-            <div style="height: 100%;" [style.width.%]="hhT()" [style.background]="hhT() >= 95 ? 'var(--green)' : (hhT() >= 85 ? 'var(--amber)' : 'var(--red)')"></div>
-          </div>
-          <div style="font-size: 11px; color: var(--txt-m); margin-top: 7px; margin-bottom: 6px;">
-            {{ hhEx() }}h de {{ hhPg() }}h
-          </div>
-          <span class="m-pill" 
-                [style.background]="hhT() >= 95 ? 'var(--green-l)' : 'var(--red-l)'"
-                [style.color]="hhT() >= 95 ? 'var(--green-d)' : 'var(--red-d)'">
-            {{ hhT() >= 95 ? '✓ Cumpliendo meta' : '⚠ ' + (95 - hhT()) + 'pp bajo meta' }}
-          </span>
         </div>
       </div>
 
-      <!-- Detail Table -->
-      <div class="m-card-flat">
-        <div style="padding: 11px 14px; border-bottom: 0.5px solid var(--border);">
-          <span style="font-size: 13px; font-weight: 700;">Detalle por servicio</span>
+      <div class="grid g3">
+        <!-- KPI 1 -->
+        <div class="card">
+          <div style="display:flex;gap:9px;margin-bottom:11px">
+            <span style="width:21px;height:21px;border-radius:50%;background:#F1F5F9;color:var(--mut);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">1</span>
+            <span style="font-size:12px;color:var(--mut);font-weight:600;line-height:1.4">Cumplimiento de H.H programada vs ejecutada</span>
+          </div>
+          <ng-container *ngIf="k1() !== null; else noData">
+            <div style="font-size:36px;font-weight:800;line-height:1;letter-spacing:-1px;" [style.color]="cColor(k1()!, DEFS[0])">{{ k1() }}%</div>
+            <div style="font-size:12px;color:var(--mut);margin:6px 0 11px">{{ k1Ok() }} de {{ rows().length }} OT cumplen</div>
+            <div class="tr" style="margin-bottom:9px">
+              <div class="fi" [style.width.%]="k1()" [style.background]="cColor(k1()!, DEFS[0])"></div>
+              <div class="mk" [style.left.%]="DEFS[0].meta" style="background:#475569"></div>
+              <div class="mk" [style.left.%]="DEFS[0].orig" style="background:#94A3B8"></div>
+            </div>
+            <div style="font-size:11px;color:var(--mut2);margin-bottom:10px">Valor meta {{ DEFS[0].meta }}% · original {{ DEFS[0].orig }}%</div>
+            <span class="p" [ngClass]="k1()! >= DEFS[0].meta ? 'p-g' : 'p-r'">
+              {{ k1()! >= DEFS[0].meta ? 'Cumple · +' + (k1()! - DEFS[0].meta).toFixed(1) + ' pp' : 'Bajo meta · -' + (DEFS[0].meta - k1()!).toFixed(1) + ' pp' }}
+            </span>
+          </ng-container>
+          <ng-template #noData>
+            <div style="font-size:19px;color:var(--mut2);font-weight:700">Sin datos</div>
+            <div style="font-size:12px;color:var(--mut2);margin:5px 0 11px">No hay datos suficientes</div>
+            <span class="p p-n">Sin datos suficientes</span>
+          </ng-template>
         </div>
-        <div class="m-table-container">
-          <table class="m-table">
+
+        <!-- KPI 2 -->
+        <div class="card">
+          <div style="display:flex;gap:9px;margin-bottom:11px">
+            <span style="width:21px;height:21px;border-radius:50%;background:#F1F5F9;color:var(--mut);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">2</span>
+            <span style="font-size:12px;color:var(--mut);font-weight:600;line-height:1.4">Cumplimiento de ejecución menor a 30 días</span>
+          </div>
+          <ng-container *ngIf="k2() !== null; else noData2">
+            <div style="font-size:36px;font-weight:800;line-height:1;letter-spacing:-1px;" [style.color]="cColor(k2()!, DEFS[1])">{{ k2() }}%</div>
+            <div style="font-size:12px;color:var(--mut);margin:6px 0 11px">{{ k2Ok() }} de {{ rows().length }} OT cumplen</div>
+            <div class="tr" style="margin-bottom:9px">
+              <div class="fi" [style.width.%]="k2()" [style.background]="cColor(k2()!, DEFS[1])"></div>
+              <div class="mk" [style.left.%]="DEFS[1].meta" style="background:#475569"></div>
+              <div class="mk" [style.left.%]="DEFS[1].orig" style="background:#94A3B8"></div>
+            </div>
+            <div style="font-size:11px;color:var(--mut2);margin-bottom:10px">Valor meta {{ DEFS[1].meta }}% · original {{ DEFS[1].orig }}%</div>
+            <span class="p" [ngClass]="k2()! >= DEFS[1].meta ? 'p-g' : 'p-r'">
+              {{ k2()! >= DEFS[1].meta ? 'Cumple · +' + (k2()! - DEFS[1].meta).toFixed(1) + ' pp' : 'Bajo meta · -' + (DEFS[1].meta - k2()!).toFixed(1) + ' pp' }}
+            </span>
+          </ng-container>
+          <ng-template #noData2>
+            <div style="font-size:19px;color:var(--mut2);font-weight:700">Sin datos</div>
+            <div style="font-size:12px;color:var(--mut2);margin:5px 0 11px">No hay datos suficientes</div>
+            <span class="p p-n">Sin datos suficientes</span>
+          </ng-template>
+        </div>
+
+        <!-- KPI 3 -->
+        <div class="card">
+          <div style="display:flex;gap:9px;margin-bottom:11px">
+            <span style="width:21px;height:21px;border-radius:50%;background:#F1F5F9;color:var(--mut);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">3</span>
+            <span style="font-size:12px;color:var(--mut);font-weight:600;line-height:1.4">Cumplimiento de UB proyectada vs ejecutada</span>
+          </div>
+          <ng-container *ngIf="k3() !== null; else noData3">
+            <div style="font-size:36px;font-weight:800;line-height:1;letter-spacing:-1px;" [style.color]="cColor(k3()!, DEFS[2])">{{ k3() }}%</div>
+            <div style="font-size:12px;color:var(--mut);margin:6px 0 11px">{{ k3Ok() }} de {{ k3Base() }} OT evaluables cumplen</div>
+            <div class="tr" style="margin-bottom:9px">
+              <div class="fi" [style.width.%]="k3()" [style.background]="cColor(k3()!, DEFS[2])"></div>
+              <div class="mk" [style.left.%]="DEFS[2].meta" style="background:#475569"></div>
+              <div class="mk" [style.left.%]="DEFS[2].orig" style="background:#94A3B8"></div>
+            </div>
+            <div style="font-size:11px;color:var(--mut2);margin-bottom:10px">Valor meta {{ DEFS[2].meta }}% · original {{ DEFS[2].orig }}%</div>
+            <span class="p" [ngClass]="k3()! >= DEFS[2].meta ? 'p-g' : 'p-r'">
+              {{ k3()! >= DEFS[2].meta ? 'Cumple · +' + (k3()! - DEFS[2].meta).toFixed(1) + ' pp' : 'Bajo meta · -' + (DEFS[2].meta - k3()!).toFixed(1) + ' pp' }}
+            </span>
+            <div *ngIf="rows().length - k3Base() > 0" style="font-size:11px;color:var(--mut2);margin-top:9px">{{ rows().length - k3Base() }} OT sin datos de UB</div>
+          </ng-container>
+          <ng-template #noData3>
+            <div style="font-size:19px;color:var(--mut2);font-weight:700">Sin datos</div>
+            <div style="font-size:12px;color:var(--mut2);margin:5px 0 11px">Falta cargar la UB proyectada</div>
+            <span class="p p-n">Sin datos suficientes</span>
+          </ng-template>
+        </div>
+      </div>
+
+      <div class="flush">
+        <div class="flush-h">
+          <b>Detalle por orden de trabajo</b>
+          <span class="mut" style="font-size:12px">{{ kPer() ? getMesTxt(kPer()) : 'todos los meses' }}</span>
+        </div>
+        <div class="scroll">
+          <table>
             <thead>
               <tr>
-                <th class="m-th">OV</th>
-                <th class="m-th">Cliente</th>
-                <th class="m-th">Tipo</th>
-                <th class="m-th">Estado</th>
-                <th class="m-th">Días</th>
-                <th class="m-th">≤30d</th>
-                <th class="m-th">UB Real</th>
-                <th class="m-th">≥36%UB</th>
-                <th class="m-th">HH Prog</th>
-                <th class="m-th">HH Ejec</th>
-                <th class="m-th">%HH</th>
-                <th class="m-th">≥95%HH</th>
+                <th>OT</th>
+                <th>Cliente</th>
+                <th>Cierre</th>
+                <th class="c">Días</th>
+                <th class="c">KPI 2</th>
+                <th class="c">H.H prog</th>
+                <th class="c">H.H ejec</th>
+                <th class="c">KPI 1</th>
+                <th class="c">UB proy</th>
+                <th class="c">UB real</th>
+                <th class="c">Δ</th>
+                <th class="c">KPI 3</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let x of rows()" class="m-tr">
-                <td class="m-td"><strong style="color: var(--blue);">{{ x.id }}</strong></td>
-                <td class="m-td">{{ x.cliente }}</td>
-                <td class="m-td">
-                  <span class="m-pill" [style.background]="getTipoColor(x.tipo) + '22'" [style.color]="getTipoColor(x.tipo)">
-                    {{ x.tipo }}
-                  </span>
+              <tr *ngFor="let x of rows()">
+                <td class="id">{{ x.id }}</td>
+                <td>{{ x.cliente }}</td>
+                <td class="mut">{{ x.ff }}</td>
+                <td class="c">{{ x.dias !== null ? x.dias + 'd' : '—' }}</td>
+                <td class="c"><span class="dot" [ngClass]="x.dias === null ? 'd-n' : (x.diOk ? 'd-g' : 'd-r')">{{ x.dias === null ? '—' : (x.diOk ? '✓' : '✗') }}</span></td>
+                <td class="c">{{ x.hhp !== null ? x.hhp + 'h' : '—' }}</td>
+                <td class="c">{{ x.hhe !== null ? x.hhe + 'h' : '—' }}</td>
+                <td class="c"><span class="dot" [ngClass]="(x.hhp === null || x.hhe === null) ? 'd-n' : (x.hhOk ? 'd-g' : 'd-r')">{{ (x.hhp === null || x.hhe === null) ? '—' : (x.hhOk ? '✓' : '✗') }}</span></td>
+                <td class="c mut">{{ x.ubp === null ? '—' : x.ubp + '%' }}</td>
+                <td class="c">{{ x.ubr === null ? '—' : x.ubr + '%' }}</td>
+                <td class="c" [style.color]="x.delta === null ? 'var(--mut2)' : (x.delta >= 0 ? 'var(--green-d)' : 'var(--red-d)')" style="font-weight:700">
+                  {{ x.delta === null ? '—' : (x.delta > 0 ? '+' : '') + x.delta + ' pp' }}
                 </td>
-                <td class="m-td">
-                  <span class="m-pill" [style.background]="getEstadoStyle(x.estado).bg" [style.color]="getEstadoStyle(x.estado).fg">
-                    {{ x.estado }}
-                  </span>
-                </td>
-                <td class="m-td">{{ x.dias !== null ? x.dias + 'd' : '—' }}</td>
-                <td class="m-td">
-                  <span *ngIf="x.dias !== null" class="m-pill" 
-                        [style.background]="x.dOk ? 'var(--green-l)' : 'var(--red-l)'" 
-                        [style.color]="x.dOk ? 'var(--green-d)' : 'var(--red-d)'">
-                    {{ x.dOk ? '✓' : '✗' }}
-                  </span>
-                  <span *ngIf="x.dias === null">—</span>
-                </td>
-                <td class="m-td">
-                  <span *ngIf="x.ubr !== null">{{ x.ubr }}%</span>
-                  <span *ngIf="x.ubr === null" style="color: var(--txt-m);">Pdte.</span>
-                </td>
-                <td class="m-td">
-                  <span *ngIf="x.ubr !== null" class="m-pill" 
-                        [style.background]="x.uOk ? 'var(--green-l)' : 'var(--red-l)'" 
-                        [style.color]="x.uOk ? 'var(--green-d)' : 'var(--red-d)'">
-                    {{ x.uOk ? '✓' : '✗' }}
-                  </span>
-                  <span *ngIf="x.ubr === null">—</span>
-                </td>
-                <td class="m-td">{{ x.hhp }}h</td>
-                <td class="m-td">{{ x.hhe }}h</td>
-                <td class="m-td">
-                  <span *ngIf="x.hhP !== null" style="font-weight: 600;" 
-                        [style.color]="x.hOk ? 'var(--green)' : 'var(--amber)'">
-                    {{ x.hhP }}%
-                  </span>
-                  <span *ngIf="x.hhP === null">—</span>
-                </td>
-                <td class="m-td">
-                  <span *ngIf="x.hhP !== null" class="m-pill" 
-                        [style.background]="x.hOk ? 'var(--green-l)' : 'var(--red-l)'" 
-                        [style.color]="x.hOk ? 'var(--green-d)' : 'var(--red-d)'">
-                    {{ x.hOk ? '✓' : '✗' }}
-                  </span>
-                  <span *ngIf="x.hhP === null">—</span>
-                </td>
+                <td class="c"><span class="dot" [ngClass]="x.delta === null ? 'd-n' : (x.ubOk ? 'd-g' : 'd-r')">{{ x.delta === null ? '—' : (x.ubOk ? '✓' : '✗') }}</span></td>
+              </tr>
+              <tr *ngIf="rows().length === 0">
+                <td colspan="12" class="empty">No hay OT ejecutadas en el período</td>
               </tr>
             </tbody>
           </table>
@@ -195,101 +184,93 @@ interface KpiRow extends Servicio {
 export class KPIsComponent {
   private dbService = inject(DbService);
 
-  selectedMonth = signal<string>('');
+  kFicha = signal<boolean>(false);
+  kPer = signal<string>('');
 
-  // Get readable month label (e.g. "Mayo 2026")
-  getMonthLabel(monthKey: string): string {
-    const [year, month] = monthKey.split('-');
-    const monthNames = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
-    const idx = parseInt(month, 10) - 1;
-    return `${monthNames[idx]} ${year}`;
-  }
+  DEFS = [
+    {n:1, k:'hh', orig:95, meta:85, obj:'Garantizar que las horas hombre ejecutadas se ajusten a las horas hombre programadas en cada orden de trabajo.', f:'(N.° de OT ejecutadas dentro de las H.H programadas / N.° total de OT ejecutadas) x 100'},
+    {n:2, k:'di', orig:95, meta:85, obj:'Ejecutar las órdenes de trabajo dentro de los 30 días posteriores a la recepción de la OV.', f:'(N.° de OT ejecutadas dentro de los 30 días / N.° total de OT ejecutadas) x 100'},
+    {n:3, k:'ub', orig:90, meta:80, obj:'Ejecutar las órdenes de trabajo manteniendo la utilidad bruta real dentro o por encima de la UB proyectada.', f:'(N.° de OT ejecutadas dentro de la UB proyectada / N.° total de OT evaluadas) x 100'}
+  ];
 
-  // Get unique months from completed services
-  availableMonths = computed(() => {
-    const months = new Set<string>();
+  meses = computed(() => {
+    const s = new Set<string>();
     this.dbService.servicios().forEach(x => {
       if (x.estado === 'Finalizado' && x.ff) {
-        const ym = x.ff.substring(0, 7);
-        if (ym && ym.length === 7) {
-          months.add(ym);
-        }
+        s.add(x.ff.substring(0, 7));
       }
     });
-    return Array.from(months)
-      .sort()
-      .reverse()
-      .map(ym => ({
-        value: ym,
-        label: this.getMonthLabel(ym)
-      }));
+    return Array.from(s).sort().reverse().map(m => ({ val: m, lbl: this.getMesTxt(m) }));
   });
 
-  // Compute calculated fields for all rows
+  allEjecutadas = computed(() => this.dbService.servicios().filter(s => s.estado === 'Finalizado'));
+  noEjecutadas = computed(() => this.dbService.servicios().length - this.allEjecutadas().length);
+
   rows = computed<KpiRow[]>(() => {
-    const all = this.dbService.servicios().map(x => {
-      const d = this.dd(x.fp, x.ff);
-      const hp = x.hhp > 0 ? Math.round((x.hhe / x.hhp) * 100) : null;
+    let base = this.allEjecutadas();
+    if (this.kPer()) {
+      base = base.filter(s => s.ff && s.ff.startsWith(this.kPer()));
+    }
+    return base.map(s => {
+      const d = this.dd(s.fp, s.ff);
+      const hhOk = (s.hhp !== null && s.hhe !== null) ? s.hhe <= s.hhp : false;
+      const diOk = d !== null && d <= 30;
+      const ubOk = (s.ubp !== null && s.ubr !== null) ? s.ubr >= s.ubp : false;
+      const delta = (s.ubp !== null && s.ubr !== null) ? Math.round((s.ubr - s.ubp) * 10) / 10 : null;
+
       return {
-        ...x,
+        ...s,
         dias: d,
-        hhP: hp,
-        dOk: d !== null && d <= 30,
-        uOk: x.ubr !== null && x.ubr !== undefined && x.ubr >= 36,
-        hOk: hp !== null && hp >= 95
+        hhOk,
+        diOk,
+        ubOk,
+        delta
       };
     });
-
-    const monthFilter = this.selectedMonth();
-    if (!monthFilter) {
-      return all;
-    }
-
-    return all.filter(x => x.estado === 'Finalizado' && x.ff && x.ff.startsWith(monthFilter));
   });
 
-  // Aggregated KPI Stats
-  hhPg = computed(() => this.rows().reduce((s, x) => s + (x.hhp || 0), 0));
-  hhEx = computed(() => this.rows().reduce((s, x) => s + (x.hhe || 0), 0));
-  hhT = computed(() => this.hhPg() ? Math.round((this.hhEx() / this.hhPg()) * 100) : 0);
+  // KPI 1 calculations
+  k1Ok = computed(() => this.rows().filter(r => r.hhOk && r.hhp !== null && r.hhe !== null).length);
+  k1 = computed(() => this.rows().length ? Math.round((this.k1Ok() / this.rows().length) * 1000) / 10 : null);
 
-  ubAvg = computed(() => {
-    const list = this.rows().filter(x => x.ubr !== null);
-    if (!list.length) return 0;
-    const sum = list.reduce((s, x) => s + (x.ubr || 0), 0);
-    return Math.round((sum / list.length) * 10) / 10;
+  // KPI 2 calculations
+  k2Ok = computed(() => this.rows().filter(r => r.diOk && r.dias !== null).length);
+  k2 = computed(() => this.rows().length ? Math.round((this.k2Ok() / this.rows().length) * 1000) / 10 : null);
+
+  // KPI 3 calculations
+  k3Base = computed(() => this.rows().filter(r => r.ubp !== null && r.ubr !== null).length);
+  k3Ok = computed(() => this.rows().filter(r => r.ubOk && r.ubp !== null && r.ubr !== null).length);
+  k3 = computed(() => this.k3Base() > 0 ? Math.round((this.k3Ok() / this.k3Base()) * 1000) / 10 : null);
+
+  // Meta count
+  medibles = computed(() => {
+    let c = 0;
+    if (this.k1() !== null) c++;
+    if (this.k2() !== null) c++;
+    if (this.k3() !== null) c++;
+    return c;
+  });
+  
+  enMeta = computed(() => {
+    let c = 0;
+    if (this.k1() !== null && this.k1()! >= this.DEFS[0].meta) c++;
+    if (this.k2() !== null && this.k2()! >= this.DEFS[1].meta) c++;
+    if (this.k3() !== null && this.k3()! >= this.DEFS[2].meta) c++;
+    return c;
   });
 
-  diffUB = computed(() => Math.round((36 - this.ubAvg()) * 10) / 10);
-
-  timeDOkCount = computed(() => this.rows().filter(r => r.dOk).length);
-  ptD = computed(() => {
-    const total = this.rows().length;
-    return total ? Math.round((this.timeDOkCount() / total) * 100) : 0;
-  });
-
-  // Utilities
   dd(a: string | undefined, b: string | undefined): number | null {
     if (!a || !b) return null;
     return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
   }
 
-  getTipoColor(tipo: string): string {
-    if (tipo === 'Preventivo') return 'var(--blue)';
-    if (tipo === 'Correctivo') return 'var(--amber)';
-    return 'var(--red)';
+  getMesTxt(m: string): string {
+    const M = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const p = m.split('-');
+    return M[+p[1] - 1] + ' ' + p[0];
   }
 
-  getEstadoStyle(estado: string): { bg: string, fg: string } {
-    const styles: Record<string, { bg: string, fg: string }> = {
-      'Finalizado': { bg: 'var(--green-l)', fg: 'var(--green-d)' },
-      'En progreso': { bg: 'var(--blue-l)', fg: 'var(--blue-d)' },
-      'En riesgo': { bg: 'var(--red-l)', fg: 'var(--red-d)' },
-      'Programado': { bg: 'var(--gray-l)', fg: 'var(--gray-d)' }
-    };
-    return styles[estado] || { bg: 'var(--gray-l)', fg: 'var(--gray-d)' };
+  cColor(pct: number, def: any): string {
+    return pct >= def.orig ? '#008300' : pct >= def.meta ? '#639922' : pct >= def.meta - 10 ? '#eda100' : '#d03b3b';
   }
 }

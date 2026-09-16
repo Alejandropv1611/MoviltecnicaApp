@@ -89,10 +89,20 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
 
           <!-- Bitácora / Comments List -->
           <div *ngIf="c.comentarios && c.comentarios.length > 0" style="margin-bottom: 10px;">
-            <div *ngFor="let n of c.comentarios" 
-                 style="border-left: 2px solid var(--lime); padding: 2px 0 2px 10px; margin-bottom: 7px;">
-              <div style="font-size: 12px; line-height: 1.5; color: var(--txt);">{{ n.t }}</div>
-              <div class="mut" style="font-size: 11px; margin-top: 2px;">{{ n.a }} &middot; {{ n.f }}</div>
+            <div *ngFor="let n of c.comentarios; let idx = index" 
+                 style="border-left: 2px solid var(--lime); padding: 2px 0 2px 10px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 12px; line-height: 1.5; color: var(--txt); word-break: break-word;">{{ n.t }}</div>
+                <div class="mut" style="font-size: 11px; margin-top: 2px;">{{ n.a }} &middot; {{ n.f }}</div>
+              </div>
+              <button type="button"
+                      (click)="deleteComment(c, idx)"
+                      title="Eliminar comentario"
+                      style="border: none; background: transparent; color: var(--mut2); cursor: pointer; padding: 2px 5px; font-size: 12px; border-radius: 4px; line-height: 1;"
+                      onmouseover="this.style.color='var(--redD)'; this.style.background='var(--redL)'"
+                      onmouseout="this.style.color='var(--mut2)'; this.style.background='transparent'">
+                🗑
+              </button>
             </div>
           </div>
 
@@ -112,21 +122,42 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
 
       <!-- ── MODAL 1: AGREGAR COMENTARIO (BITÁCORA) ── -->
       <div *ngIf="commentModal && activeClient" class="ov" (click)="closeOnOverlay($event, 'comment')">
-        <div class="mod" style="max-width: 480px;">
+        <div class="mod" style="max-width: 520px;">
           <div class="mod-h">
             <div>
               <b>{{ activeClient.nombre }}</b>
-              <span class="s">Agregar comentario a la bitácora</span>
+              <span class="s">Bitácora de comentarios</span>
             </div>
             <button class="x" (click)="commentModal = false">×</button>
           </div>
           <div class="mod-b">
+            <!-- Comentarios ya registrados -->
+            <div *ngIf="activeClient.comentarios && activeClient.comentarios.length > 0" style="margin-bottom: 16px;">
+              <label>Comentarios registrados ({{ activeClient.comentarios.length }})</label>
+              <div style="max-height: 160px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #F8FAFC;">
+                <div *ngFor="let n of activeClient.comentarios; let idx = index"
+                     style="border-left: 2px solid var(--lime); padding: 4px 0 4px 8px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; background:#fff; border-radius:0 6px 6px 0; border-top:1px solid var(--line2); border-bottom:1px solid var(--line2); border-right:1px solid var(--line2);">
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 12px; line-height: 1.4; color: var(--txt); word-break: break-word;">{{ n.t }}</div>
+                    <div class="mut" style="font-size: 10px; margin-top: 2px;">{{ n.a }} &middot; {{ n.f }}</div>
+                  </div>
+                  <button type="button"
+                          (click)="deleteComment(activeClient, idx)"
+                          title="Eliminar este comentario"
+                          class="sm dgr"
+                          style="padding: 2px 6px; font-size: 11px;">
+                    🗑
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="fld">
-              <label>Comentario u Observación *</label>
+              <label>Nuevo Comentario u Observación *</label>
               <textarea 
                 [(ngModel)]="newCommentText" 
                 placeholder="Ej. El portal exige recertificar la inducción cada 12 meses. Coordinar con SSOMA..."
-                style="height: 100px;">
+                style="height: 80px;">
               </textarea>
             </div>
             <div *ngIf="commentErr" style="font-size: 12px; color: var(--redD); margin-top: 4px;">
@@ -136,8 +167,8 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
           <div class="mod-f">
             <span></span>
             <div style="display: flex; gap: 8px;">
-              <button (click)="commentModal = false">Cancelar</button>
-              <button class="pri" (click)="saveComment()">Guardar</button>
+              <button (click)="commentModal = false">Cerrar</button>
+              <button class="pri" (click)="saveComment()">Agregar comentario</button>
             </div>
           </div>
         </div>
@@ -558,6 +589,22 @@ export class ClientesComponent {
 
     await this.dbService.upsert('clientes', updated);
     this.commentModal = false;
+  }
+
+  async deleteComment(c: Cliente, index: number) {
+    if (!c || !c.comentarios || index < 0 || index >= c.comentarios.length) return;
+    if (!confirm('¿Estás seguro de eliminar este comentario?')) return;
+
+    const currentNotes = c.comentarios.filter((_, i) => i !== index);
+    const updated: Cliente = {
+      ...c,
+      comentarios: currentNotes
+    };
+
+    await this.dbService.upsert('clientes', updated);
+    if (this.activeClient && this.activeClient.id === c.id) {
+      this.activeClient = { ...this.activeClient, comentarios: currentNotes };
+    }
   }
 
   // --- ENABLEMENT MODAL LOGIC ---

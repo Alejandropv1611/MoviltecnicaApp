@@ -65,14 +65,21 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
               <span *ngIf="c.plataformaUsuario">
                 &middot; usuario <b>{{ c.plataformaUsuario }}</b>
               </span>
-              <span *ngIf="c.plataformaPassword" style="margin-left: 4px;">
+              <span *ngIf="c.plataformaPassword" style="margin-left: 4px; display: inline-flex; align-items: center; gap: 4px;">
                 &middot; clave 
                 <b>{{ showPwd[c.id] ? c.plataformaPassword : '••••••' }}</b>
                 <button type="button" 
                         (click)="togglePwd(c.id)" 
                         title="Ver/Ocultar clave"
-                        style="border: none; background: none; cursor: pointer; font-size: 11px; padding: 0 3px; color: var(--blueD);">
-                  {{ showPwd[c.id] ? '🙈' : '👁️' }}
+                        style="border: none; background: none; cursor: pointer; padding: 0 2px; color: var(--blueD); display: inline-flex; align-items: center;">
+                  <svg *ngIf="!showPwd[c.id]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <svg *ngIf="showPwd[c.id]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
                 </button>
               </span>
             </div>
@@ -90,7 +97,7 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
           <!-- Bitácora / Comments List -->
           <div *ngIf="c.comentarios && c.comentarios.length > 0" style="margin-bottom: 10px;">
             <div *ngFor="let n of c.comentarios; let idx = index" 
-                 style="border-left: 2px solid var(--lime); padding: 2px 0 2px 10px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                 style="border-left: 2px solid var(--lime); padding: 3px 0 3px 10px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
               <div style="flex: 1; min-width: 0;">
                 <div style="font-size: 12px; line-height: 1.5; color: var(--txt); word-break: break-word;">{{ n.t }}</div>
                 <div class="mut" style="font-size: 11px; margin-top: 2px;">{{ n.a }} &middot; {{ n.f }}</div>
@@ -98,10 +105,15 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
               <button type="button"
                       (click)="deleteComment(c, idx)"
                       title="Eliminar comentario"
-                      style="border: none; background: transparent; color: var(--mut2); cursor: pointer; padding: 2px 5px; font-size: 12px; border-radius: 4px; line-height: 1;"
-                      onmouseover="this.style.color='var(--redD)'; this.style.background='var(--redL)'"
-                      onmouseout="this.style.color='var(--mut2)'; this.style.background='transparent'">
-                🗑
+                      style="border: none; background: transparent; color: #94A3B8; cursor: pointer; padding: 3px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0;"
+                      onmouseover="this.style.color='#DC2626'; this.style.background='#FEE2E2'"
+                      onmouseout="this.style.color='#94A3B8'; this.style.background='transparent'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
               </button>
             </div>
           </div>
@@ -145,8 +157,11 @@ import { DbService, Cliente, ClienteNota, BaseRequirement } from '../../services
                           (click)="deleteComment(activeClient, idx)"
                           title="Eliminar este comentario"
                           class="sm dgr"
-                          style="padding: 2px 6px; font-size: 11px;">
-                    🗑
+                          style="padding: 3px 6px; font-size: 11px; display: inline-flex; align-items: center; gap: 2px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
                   </button>
                 </div>
               </div>

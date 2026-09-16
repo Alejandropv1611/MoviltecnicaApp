@@ -12,10 +12,26 @@ export interface ClientRequirement {
   reqs: BaseRequirement[];
 }
 
+export interface ClienteNota {
+  a: string;
+  f: string;
+  t: string;
+}
+
 export interface Cliente {
   id: string;
   nombre: string;
   reqs: BaseRequirement[];
+  sector?: string;
+  plataformaNombre?: string;
+  plataformaUrl?: string;
+  plataformaUsuario?: string;
+  plataformaPassword?: string;
+  contactoNombre?: string;
+  contactoEmail?: string;
+  contactoTelefono?: string;
+  notas?: string;
+  comentarios?: ClienteNota[];
 }
 
 export interface Tecnico {
@@ -294,6 +310,7 @@ export class DbService {
         const parsedClientes = cRes.data.map((c: any) => ({
           ...c,
           reqs: this.parseJsonField(c.reqs, []),
+          comentarios: this.parseJsonField(c.comentarios, []),
         }));
         this.clientes.set(parsedClientes as Cliente[]);
       }
@@ -409,6 +426,15 @@ export class DbService {
         console.log(`[DbService] Serialized items as JSON string`);
       }
     }
+
+    if (sbTable === 'clientes') {
+      if (dataToSave.reqs && typeof dataToSave.reqs === 'object') {
+        dataToSave.reqs = JSON.stringify(dataToSave.reqs);
+      }
+      if (dataToSave.comentarios && typeof dataToSave.comentarios === 'object') {
+        dataToSave.comentarios = JSON.stringify(dataToSave.comentarios);
+      }
+    }
     
     console.log(`[DbService] Data to save (after serialization):`, JSON.stringify(dataToSave));
     
@@ -436,6 +462,10 @@ export class DbService {
     }
     if (colName === 'solicEpp') {
       signalItem.items = this.parseJsonField(item.items, []);
+    }
+    if (colName === 'clientes') {
+      signalItem.reqs = this.parseJsonField(item.reqs, []);
+      signalItem.comentarios = this.parseJsonField(item.comentarios, []);
     }
     if (exIdx >= 0) {
       updatedList = list.map((x, i) => i === exIdx ? { ...x, ...signalItem } : x);
